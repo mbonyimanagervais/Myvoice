@@ -62,11 +62,16 @@ folders = [
 ]
 
 
-for folder in folders:
+if not (
+    os.environ.get("VERCEL")
+    or os.environ.get("AWS_LAMBDA_FUNCTION_VERSION")
+):
 
-    if not os.path.exists(folder):
+    for folder in folders:
 
-        os.makedirs(folder)
+        if not os.path.exists(folder):
+
+            os.makedirs(folder)
 
 
 # =====================================
