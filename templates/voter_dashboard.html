@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Voter Dashboard | MyVoice{% endblock %}
+
+{% block body_class %}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/voter-dashboard.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="app-shell">
+    <!-- Header -->
+    <header class="app-header">
+        <div class="app-brand">
+            <span class="app-badge">MV</span>
+            <div>
+                <h1>Welcome, {{ session['voter_name'] }}</h1>
+                <p>Your voice matters. Cast your vote below.</p>
+            </div>
+        </div>
+        <div class="app-actions">
+            <div class="theme-toggle">
+                <button class="theme-btn" data-theme="light" title="Light Mode">☀️</button>
+                <button class="theme-btn" data-theme="blue" title="Blue Mode">🔵</button>
+                <button class="theme-btn" data-theme="dark" title="Dark Mode">🌙</button>
+            </div>
+            <a class="btn btn-danger" href="{{ url_for('auth.voter_logout') }}">
+                <span>🚪</span> Logout
+            </a>
+        </div>
+    </header>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert {% if category == 'error' %}alert-danger{% elif category == 'danger' %}alert-danger{% elif category == 'success' %}alert-success{% elif category == 'warning' %}alert-warning{% else %}alert-info{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Election Announcement Bar -->
+    <div class="announcement-bar">
+        <div class="announcement-marquee" id="election-marquee">
+            <span class="announcement-item">📢 Election voting is now open! Cast your vote by the deadline.</span>
+            <span class="announcement-item">🔒 Your vote is secure and confidential. Thank you for participating in democracy!</span>
+            <span class="announcement-item">⏰ Remember: Each student can only vote once per category.</span>
+        </div>
+    </div>
+
+    <!-- Hero -->
+    <div class="dashboard-hero">
+        <span class="eyebrow" style="color: #93c5fd;">Voter Portal</span>
+        <h1>Available Elections</h1>
+        <p>Select an active election below to begin voting. Your vote is confidential and secure.</p>
+    </div>
+
+    {% if published_results and results_visibility_enabled %}
+    <div class="d-flex justify-content-center mb-4">
+        <a class="btn btn-lg" href="{{ url_for('voting.voter_results', election_id=published_results[0].election_id) }}">
+            <span>📊</span> View Election Results
+        </a>
+    </div>
+    {% elif not results_visibility_enabled %}
+    <div class="d-flex justify-content-center mb-4">
+        <button class="btn btn-lg btn-secondary" type="button" disabled>
+            <span>📊</span> View Election Results
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- Elections Grid -->
+    {% if elections %}
+    <div class="widget-grid">
+        {% for election in elections %}
+        <div class="widget-card card-hover">
+            <div class="d-flex justify-between align-center mb-3">
+                <h4 style="margin: 0;">🗳️ {{ election.title }}</h4>
+                {% if election.status in ['Active', 'Ready', 'Draft'] %}
+                <span class="badge badge-success">Open</span>
+                {% elif election.status == 'Upcoming' %}
+                <span class="badge badge-info">Upcoming</span>
+                {% elif election.status == 'Closed' %}
+                <span class="badge badge-neutral">Closed</span>
+                {% else %}
+                <span class="badge badge-neutral">{{ election.status }}</span>
+                {% endif %}
+            </div>
+
+            {% if election.description %}
+            <p class="widget-caption" style="margin-bottom: 12px;">{{ election.description }}</p>
+            {% endif %}
+
+            <div class="d-flex gap-3 mb-3" style="font-size: 13px; color: var(--text-muted);">
+                <span>📅 {{ election.election_year or 'N/A' }}</span>
+                {% if election.start_date %}
+                <span>🕐 {{ election.start_date.strftime('%b %d, %Y') if election.start_date else '' }}</span>
+                {% endif %}
+            </div>
+
+            <div class="d-flex gap-2 flex-wrap">
+                {% if election.status in ['Active', 'Ready', 'Draft'] %}
+                <a class="btn btn-sm" href="{{ url_for('voting.vote_page', election_id=election.id) }}">
+                    <span>🗳️</span> Start Voting
+                </a>
+                {% endif %}
+
+                {% if results_visibility_enabled %}
+                <a class="btn btn-sm btn-secondary" href="{{ url_for('voting.voter_results', election_id=election.id) }}">
+                    <span>📊</span> View Results
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card empty-state">
+        <div class="empty-icon">🗳️</div>
+        <h3>No Elections Available</h3>
+        <p>There are no active elections available at the moment. Please check back later.</p>
+    </div>
+    {% endif %}
+
+    {% if elections %}
+    <!-- Candidate Showcase Grid -->
+    <div class="candidates-showcase">
+        <h2 class="section-title">📋 Registered Candidates</h2>
+        
+        {% set all_candidates = [] %}
+        {% for election in elections %}
+            {% if election.status not in ['Closed', 'Archived'] %}
+                {% for c in election.candidates %}
+                    {% set _ = all_candidates.append(c) %}
+                {% endfor %}
+            {% endif %}
+        {% endfor %}
+        
+        {% if all_candidates %}
+        <div class="candidates-grid">
+            {% for candidate in all_candidates[:12] %}
+            <div class="candidate-showcase-card">
+                <div class="candidate-photo-area">
+                    {% if candidate.photo %}
+                    <img src="/uploads/candidates/{{ candidate.photo }}" alt="Photo of {{ candidate.full_name or candidate.name }}" class="candidate-showcase-photo" />
+                    {% else %}
+                    <div class="candidate-fallback">
+                        <span class="candidate-initial">
+                            {% if candidate.full_name or candidate.name %}{{ (candidate.full_name or candidate.name)[0] }}{% else %}C{% endif %}
+                        </span>
+                    </div>
+                    {% endif %}
+                    <div class="candidate-position-badge">
+                        {{ candidate.position_name if candidate.position_name else 'Candidate' }}
+                    </div>
+                </div>
+                
+                <div class="candidate-info">
+                    <h3 class="candidate-showcase-name">{{ candidate.full_name or candidate.name }}</h3>
+                </div>
+            {% endfor %}
+        </div>
+        
+        <div class="view-all-link">
+            <a href="{{ url_for('candidates.candidates_page') }}">View All Candidates →</a>
+        </div>
+        {% else %}
+        <div class="empty-candidates-showcase">
+            <div class="empty-icon">👥</div>
+            <p>No candidates registered yet for active elections.</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

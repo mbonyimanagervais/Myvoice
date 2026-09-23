@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}{% if system_settings and system_settings.system_name %}{{ system_settings.system_name }}{% else %}MyVoice Voting System{% endif %} | Admin Login{% endblock %}
+
+{% block body_class %}auth-page{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+    <div class="auth-logo">
+        <div class="logo-icon">
+            {% if system_settings and system_settings.school_logo %}
+            <img src="{{ url_for('static', filename='uploads/' + system_settings.school_logo) }}" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; padding: 8px; border-radius: var(--radius-lg);">
+            {% else %}
+            MV
+            {% endif %}
+        </div>
+        <h1>{% if system_settings and system_settings.system_name %}{{ system_settings.system_name }}{% else %}MyVoice{% endif %}</h1>
+        <p>{% if system_settings and system_settings.school_name %}{{ system_settings.school_name }}{% else %}Administrator Portal{% endif %}</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert {% if category == 'error' %}alert-danger{% elif category == 'danger' %}alert-danger{% elif category == 'success' %}alert-success{% else %}alert-info{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" class="auth-form" id="adminLoginForm" action="{{ url_for('auth.admin_login', _=nonce) }}" novalidate>
+        <div class="form-group">
+            <label for="{{ 'f1_' + nonce }}">Email Address</label>
+            {# Rendered as a plain text input on purpose: Chrome/Edge ignore
+               autocomplete="off" on login forms and autofill saved
+               credentials into email/password pairs. A non-email, non-password
+               text field at page load removes the trigger entirely. The
+               email keyboard is preserved via inputmode. #}
+            <input type="text"
+                   inputmode="email"
+                   id="{{ 'f1_' + nonce }}"
+                   name="{{ 'f1_' + nonce }}"
+                   class="form-control"
+                   placeholder="you@organization.org"
+                   value=""
+                   autocomplete="off"
+                   data-form-type="other"
+                   data-lpignore="true"
+                   data-1p-ignore="true"
+                   autocapitalize="off"
+                   autocorrect="off"
+                   spellcheck="false"
+                   data-empty="true">
+        </div>
+
+        <div class="form-group">
+            <label for="{{ 'f2_' + nonce }}">Password</label>
+            <div class="input-group password-toggle">
+                {# Deliberately NOT rendered as type="password". Browser password
+                   managers (Chrome/Edge built-in, iCloud Keychain) scan the DOM
+                   for password inputs at page load and silently inject the
+                   last-saved username/password for this site, ignoring
+                   autocomplete="off" and dynamic field names. Rendering an
+                   empty masked text field means NO password input exists at
+                   load time, so there is nothing for them to fill. The field
+                   is promoted to a real password input only on genuine user
+                   interaction (see script below). #}
+                <input type="text"
+                       id="{{ 'f2_' + nonce }}"
+                       name="{{ 'f2_' + nonce }}"
+                       class="form-control"
+                       placeholder="Enter your password"
+                       value=""
+                       autocomplete="off"
+                       data-form-type="other"
+                       data-lpignore="true"
+                       data-1p-ignore="true"
+                       autocapitalize="off"
+                       autocorrect="off"
+                       spellcheck="false"
+                       data-empty="true"
+                       data-pwd-armed="true">
+                <button type="button" class="toggle-password" data-target="{{ 'f2_' + nonce }}" title="Show / Hide password" aria-label="Show or hide password">👁️</button>
+            </div>
+        </div>
+
+        <input type="hidden" name="form_marker" value="admin_login">
+
+        <button type="submit" class="btn btn-lg btn-block" id="adminLoginBtn">
+            <span class="btn-label"><span>🔐</span> Sign In</span>
+            <span class="btn-loading" style="display:none;">⏳ Signing in…</span>
+        </button>
+    </form>
+
+    <a class="auth-forgot" href="{{ url_for('auth.admin_forgot_password') }}" style="display:block; text-align:center; margin-top:18px; font-size:14px; font-weight:600;">Forgot Password?</a>
+
+    <div style="margin-top:22px; text-align:center;">
+        <p style="font-size:13px; color:#64748b; margin-bottom:10px;">New to MyVoice?</p>
+        <a href="{{ url_for('auth.admin_register') }}" class="btn btn-lg btn-block btn-outline" style="text-decoration:none; display:block;">
+            🏫 Create Organization Account
+        </a>
+    </div>
+
+    <a class="auth-back" href="{{ url_for('index') }}" style="margin-top:18px; display:block; text-align:center;">← Back to Home</a>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Anti-autofill password masking.
+       The password field renders as a plain text input (data-pwd-armed="true")
+       so that NO native password input exists in the DOM at page load —
+       this is what stops browser password managers from auto-injecting a
+       previously saved administrator's credentials. While it is a text field
+       it is visually masked with -webkit-text-security so it still looks and
+       behaves exactly like a password box. JS promotes it to a real password
+       input the moment the user interacts with it. */
+    #adminLoginForm input[data-pwd-armed="true"] {
+        -webkit-text-security: disc;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // ==================================================================
+    // ADMIN LOGIN — GUARANTEED-EMPTY CREDENTIAL FIELDS
+    // ==================================================================
+    // Root cause this defends against: browser password managers
+    // (Chrome/Edge built-in, Safari Keychain) key saved credentials to
+    // the SITE ORIGIN, ignore autocomplete="off" and dynamic field
+    // names, and silently inject the last-saved username+password pair
+    // into any form that contains a password input. They also
+    // resurrect previously typed values when a page is restored from
+    // the back/forward cache (bfcache) — which is why another
+    // administrator's email/password could appear on this form.
+    //
+    // Defense layers here:
+    //   1. NO password input exists at page load (the password field is
+    //      a masked text input; see markup + extra_css). There is
+    //      nothing for a password manager to fill. It is promoted to a
+    //      real type="password" field only on genuine user interaction.
+    //   2. Value-diff clearing: any value that appears in a field that
+    //      the user did not actually type is wiped (covers late/async
+    //      autofill after load, on tab return, and after type changes).
+    //   3. pageshow handling: every restore of this page (back/forward
+    //      navigation) starts from a completely empty form and re-arms
+    //      the masked text field.
+    // The user's real keystrokes are never wiped by any of this.
+    // ==================================================================
+    (function () {
+        var form = document.getElementById('adminLoginForm');
+        var emailEl = document.getElementById('{{ 'f1_' + nonce }}');
+        var passwordEl = document.getElementById('{{ 'f2_' + nonce }}');
+        if (!emailEl || !passwordEl) return;
+
+        // ---- what the user actually typed ---------------------------
+        // diffClear() wipes a field only when its current value differs
+        // from the last value the user genuinely entered. Browser
+        // autofill/bfcache values therefore get removed; user input is
+        // always preserved.
+        var lastUserEmail = '';
+        var lastUserPassword = '';
+        var userEditedEmail = false;
+        var userEditedPassword = false;
+
+        emailEl.addEventListener('input', function () {
+            if (userEditedEmail) lastUserEmail = emailEl.value;
+            emailEl.setAttribute('data-empty', emailEl.value ? 'false' : 'true');
+        });
+        passwordEl.addEventListener('input', function () {
+            if (userEditedPassword) lastUserPassword = passwordEl.value;
+            passwordEl.setAttribute('data-empty', passwordEl.value ? 'false' : 'true');
+        });
+
+        emailEl.addEventListener('keydown', function () {
+            userEditedEmail = true;
+        });
+        passwordEl.addEventListener('keydown', function () {
+            userEditedPassword = true;
+        });
+        emailEl.addEventListener('paste', function () {
+            userEditedEmail = true;
+        });
+        passwordEl.addEventListener('paste', function () {
+            userEditedPassword = true;
+        });
+
+        // ---- password field arming / promotion ----------------------
+        function promotePasswordField() {
+            // Turn the masked text input into a real password input.
+            // 'focus' fires BEFORE the first character is entered, so
+            // nothing the user types is ever shown as plain text.
+            if (passwordEl.getAttribute('data-pwd-armed') === 'true') {
+                passwordEl.setAttribute('data-pwd-armed', 'false');
+                passwordEl.type = 'password';
+            }
+        }
+        function armPasswordMask() {
+            // Return to the safe empty masked-text state (used on
+            // back/forward cache restore).
+            passwordEl.setAttribute('data-pwd-armed', 'true');
+            passwordEl.type = 'text';
+        }
+        ['focus', 'keydown', 'paste', 'pointerdown'].forEach(function (evtName) {
+            passwordEl.addEventListener(evtName, promotePasswordField);
+        });
+
+        // ---- foreign-value wiping ------------------------------------
+        function diffClear() {
+            if (!userEditedEmail && emailEl.value) {
+                emailEl.value = '';
+            } else if (userEditedEmail && emailEl.value !== lastUserEmail) {
+                emailEl.value = lastUserEmail;
+            }
+            if (!userEditedPassword && passwordEl.value) {
+                passwordEl.value = '';
+            } else if (userEditedPassword && passwordEl.value !== lastUserPassword) {
+                passwordEl.value = lastUserPassword;
+            }
+            emailEl.setAttribute('data-empty', emailEl.value ? 'false' : 'true');
+            passwordEl.setAttribute('data-empty', passwordEl.value ? 'false' : 'true');
+        }
+        function runClearPasses() {
+            // Autofill can be applied asynchronously well after 'load'
+            // (or on the first user gesture), so re-check a few times.
+            [50, 200, 500, 1000, 2500].forEach(function (ms) {
+                setTimeout(diffClear, ms);
+            });
+        }
+        runClearPasses();
+        if (document.readyState !== 'complete') {
+            window.addEventListener('load', runClearPasses);
+        }
+
+
+        // ---- back/forward cache restore ------------------------------
+        // bfcache ignores Cache-Control headers and re-shows this page
+        // WITH whatever was typed before navigating away. Every restore
+        // must open completely empty, with the masked text field
+        // re-armed and the submit button usable again.
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted) {
+                lastUserEmail = '';
+                lastUserPassword = '';
+                userEditedEmail = false;
+                userEditedPassword = false;
+                emailEl.value = '';
+                passwordEl.value = '';
+                emailEl.setAttribute('data-empty', 'true');
+                passwordEl.setAttribute('data-empty', 'true');
+                armPasswordMask();
+                resetSubmitState();
+            }
+            diffClear();
+            runClearPasses();
+        });
+
+        // Returning to the tab can also re-trigger autofill in some
+        // browsers; wipe anything that appeared without real typing.
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden) setTimeout(diffClear, 100);
+        });
+
+        // ---- show / hide password ------------------------------------
+        document.querySelectorAll('.toggle-password').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var input = document.getElementById(btn.dataset.target);
+                if (!input) return;
+                if (input === passwordEl) {
+                    promotePasswordField();
+                    // Confirm the promotion injected nothing foreign.
+                    setTimeout(diffClear, 0);
+                    setTimeout(diffClear, 150);
+                }
+                input.type = input.type === 'password' ? 'text' : 'password';
+            });
+        });
+
+        // ---- loading state (prevents double submit) -------------------
+        var submitBtn = document.getElementById('adminLoginBtn');
+        function resetSubmitState() {
+            if (!submitBtn) return;
+            submitBtn.disabled = false;
+            var label = submitBtn.querySelector('.btn-label');
+            var loading = submitBtn.querySelector('.btn-loading');
+            if (label) label.style.display = 'inline';
+            if (loading) loading.style.display = 'none';
+        }
+        if (form) {
+            form.addEventListener('submit', function () {
+                promotePasswordField();
+                diffClear();
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    var label = submitBtn.querySelector('.btn-label');
+                    var loading = submitBtn.querySelector('.btn-loading');
+                    if (label) label.style.display = 'none';
+                    if (loading) loading.style.display = 'inline';
+                }
+            });
+        }
+    })();
+</script>
+{% endblock %}

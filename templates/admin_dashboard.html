@@ -1,0 +1,482 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Admin Dashboard | MyVoice{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin-dashboard.css') }}">
+{% endblock %}
+
+{% block admin_content %}
+
+<!-- ============================================================
+     DASHBOARD HERO
+     ============================================================ -->
+<section class="mv-hero">
+    <div class="mv-hero-left">
+        <span class="mv-eyebrow">Election Control Center</span>
+        <h1 class="mv-hero-title">
+            Welcome back,
+            <span class="mv-hero-name">{{ current_admin.full_name }}</span>
+        </h1>
+        <p class="mv-hero-sub">
+            {% if active_election %}
+            Election <strong>{{ active_election.title }}</strong> is currently
+            <span class="mv-pill mv-pill-live"><span class="mv-pulse"></span>LIVE</span>
+            with <strong>{{ kpis.students_voted }}</strong> of
+            <strong>{{ kpis.students_not_voted + kpis.students_voted }}</strong>
+            registered voters participating.
+            {% else %}
+            No election is currently active. Create a new election to begin
+            managing the voting process.
+            {% endif %}
+        </p>
+    </div>
+    <div class="mv-hero-right">
+        <div class="mv-system-status mv-status-{% if recent_failed_logins > 5 %}critical{% elif recent_failed_logins > 0 %}warning{% else %}healthy{% endif %}">
+            <div class="mv-status-dot"></div>
+            <div>
+                <div class="mv-status-label">System</div>
+                <div class="mv-status-value">
+                    {% if recent_failed_logins > 5 %}Critical
+                    {% elif recent_failed_logins > 0 %}Warning
+                    {% else %}Healthy{% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="mv-clock" id="mvClock" title="Server time"></div>
+    </div>
+</section>
+
+<!-- ============================================================
+     KPI ROW
+     ============================================================ -->
+<section class="mv-kpi-grid">
+    <article class="mv-kpi mv-kpi-primary">
+        <div class="mv-kpi-icon">🗳️</div>
+        <div class="mv-kpi-body">
+            <div class="mv-kpi-label">Total Elections</div>
+            <div class="mv-kpi-value" data-count="{{ kpis.total_elections }}">0</div>
+            <div class="mv-kpi-meta">
+                {{ kpis.active_elections }} active · {{ kpis.closed_elections }} closed
+            </div>
+        </div>
+    </article>
+
+    <article class="mv-kpi mv-kpi-success">
+        <div class="mv-kpi-icon">📊</div>
+        <div class="mv-kpi-body">
+            <div class="mv-kpi-label">Participation Rate</div>
+            <div class="mv-kpi-value">
+                <span data-count="{{ (kpis.participation_rate * 10) | round(0, 'floor') | int(0) }}">0</span><span class="mv-kpi-suffix">.{{ (kpis.participation_rate * 10) | round(0, 'floor') % 10 }}%</span>
+            </div>
+            <div class="mv-kpi-meta">
+                {{ kpis.students_voted }} of {{ kpis.students_voted + kpis.students_not_voted }} voters
+            </div>
+        </div>
+        <div class="mv-kpi-bar">
+            <div class="mv-kpi-bar-fill" style="width: {{ kpis.participation_rate }}%"></div>
+        </div>
+    </article>
+
+    <article class="mv-kpi">
+        <div class="mv-kpi-icon">👥</div>
+        <div class="mv-kpi-body">
+            <div class="mv-kpi-label">Registered Students</div>
+            <div class="mv-kpi-value" data-count="{{ kpis.total_students }}">0</div>
+            <div class="mv-kpi-meta">Active voter accounts</div>
+        </div>
+    </article>
+
+    <article class="mv-kpi">
+        <div class="mv-kpi-icon">✓</div>
+        <div class="mv-kpi-body">
+            <div class="mv-kpi-label">Students Voted</div>
+            <div class="mv-kpi-value" data-count="{{ kpis.students_voted }}">0</div>
+            <div class="mv-kpi-meta mv-meta-positive">
+                Ballots submitted
+            </div>
+        </div>
+    </article>
+
+    <article class="mv-kpi">
+        <div class="mv-kpi-icon">⏳</div>
+        <div class="mv-kpi-body">
+            <div class="mv-kpi-label">Awaiting Vote</div>
+            <div class="mv-kpi-value" data-count="{{ kpis.students_not_voted }}">0</div>
+            <div class="mv-kpi-meta mv-meta-neutral">Eligible but not yet voted</div>
+        </div>
+    </article>
+
+    <article class="mv-kpi">
+        <div class="mv-kpi-icon">👤</div>
+        <div class="mv-kpi-body">
+            <div class="mv-kpi-label">Candidates</div>
+            <div class="mv-kpi-value" data-count="{{ kpis.total_candidates }}">0</div>
+            <div class="mv-kpi-meta">Across {{ kpis.total_positions }} positions</div>
+        </div>
+    </article>
+</section>
+
+<!-- ============================================================
+     ACTIVE ELECTION CONTROL CENTER
+     ============================================================ -->
+<section class="mv-section">
+    <header class="mv-section-header">
+        <div>
+            <h2 class="mv-section-title">Active Election Control</h2>
+            <p class="mv-section-sub">Live operations, voters, and quick actions for the current election.</p>
+        </div>
+        <a class="mv-link" href="{{ url_for('elections.elections_page') }}">All elections →</a>
+    </header>
+
+    {% if active_election %}
+    <div class="mv-election-card">
+        <div class="mv-election-banner">
+            <div class="mv-election-banner-left">
+                <span class="mv-pill mv-pill-live"><span class="mv-pulse"></span>LIVE</span>
+                <span class="mv-election-year">{{ active_election.election_year or '—' }}</span>
+            </div>
+            <h3 class="mv-election-title">{{ active_election.title }}</h3>
+            <p class="mv-election-desc">{{ active_election.description or 'No description provided for this election.' }}</p>
+        </div>
+
+        <div class="mv-election-meta">
+            <div class="mv-meta-item">
+                <span class="mv-meta-label">Status</span>
+                <span class="mv-meta-value">{{ active_election.status }}</span>
+            </div>
+            <div class="mv-meta-item">
+                <span class="mv-meta-label">Start</span>
+                <span class="mv-meta-value">
+                    {{ active_election.start_date.strftime('%d %b %Y') if active_election.start_date else 'Not set' }}
+                </span>
+            </div>
+            <div class="mv-meta-item">
+                <span class="mv-meta-label">End</span>
+                <span class="mv-meta-value">
+                    {{ active_election.end_date.strftime('%d %b %Y') if active_election.end_date else 'Not set' }}
+                </span>
+            </div>
+            <div class="mv-meta-item">
+                <span class="mv-meta-label">Visibility</span>
+                <span class="mv-meta-value">{{ active_election.visibility or 'Visible' }}</span>
+            </div>
+        </div>
+
+        <div class="mv-election-progress">
+            <div class="mv-progress-header">
+                <span>Voter Turnout</span>
+                <strong>{{ kpis.participation_rate }}%</strong>
+            </div>
+            <div class="mv-progress-track">
+                <div class="mv-progress-fill" style="width: {{ kpis.participation_rate }}%"></div>
+            </div>
+            <div class="mv-progress-legend">
+                <span><span class="mv-legend-dot mv-legend-voted"></span>{{ kpis.students_voted }} voted</span>
+                <span><span class="mv-legend-dot mv-legend-pending"></span>{{ kpis.students_not_voted }} pending</span>
+            </div>
+        </div>
+
+        <div class="mv-election-actions">
+            <a class="mv-btn mv-btn-primary" href="{{ url_for('candidates.candidates_page') }}?election_id={{ active_election.id }}">Manage Candidates</a>
+            <a class="mv-btn" href="{{ url_for('elections.elections_page') }}">Manage Election</a>
+            <a class="mv-btn" href="{{ url_for('reports.results_page') }}?election_id={{ active_election.id }}">View Results</a>
+            <a class="mv-btn" href="{{ url_for('reports.reports_page') }}">Reports</a>
+        </div>
+    </div>
+    {% else %}
+    <div class="mv-empty-state">
+        <div class="mv-empty-icon">🗳️</div>
+        <h3>No active election</h3>
+        <p>Create a new election to begin managing the voting process.</p>
+        <a class="mv-btn mv-btn-primary" href="{{ url_for('elections.elections_page') }}">Create Election</a>
+    </div>
+    {% endif %}
+</section>
+
+<!-- ============================================================
+     ANALYTICS ROW
+     ============================================================ -->
+<section class="mv-section">
+    <header class="mv-section-header">
+        <div>
+            <h2 class="mv-section-title">Real-Time Analytics</h2>
+            <p class="mv-section-sub">Live charts driven by real system data.</p>
+        </div>
+    </header>
+
+    <div class="mv-charts-grid">
+        <article class="mv-chart-card mv-chart-large">
+            <header class="mv-chart-header">
+                <h3>Voting Activity</h3>
+                <span class="mv-chart-sub">Ballots submitted — last 7 days</span>
+            </header>
+            <div class="mv-chart-body">
+                <canvas id="mvVotingActivityChart"
+                    data-labels='{{ voting_activity_labels | tojson }}'
+                    data-values='{{ voting_activity_values | tojson }}'></canvas>
+            </div>
+        </article>
+
+        <article class="mv-chart-card">
+            <header class="mv-chart-header">
+                <h3>Election Status</h3>
+                <span class="mv-chart-sub">Distribution by lifecycle</span>
+            </header>
+            <div class="mv-chart-body">
+                <canvas id="mvElectionStatusChart"
+                    data-draft='{{ election_status_data.Draft }}'
+                    data-ready='{{ election_status_data.Ready }}'
+                    data-active='{{ election_status_data.Active }}'
+                    data-closed='{{ election_status_data.Closed }}'
+                    data-archived='{{ election_status_data.Archived }}'></canvas>
+            </div>
+        </article>
+
+        {% if active_election and candidate_ranking %}
+        <article class="mv-chart-card mv-chart-wide">
+            <header class="mv-chart-header">
+                <h3>Leading Candidates</h3>
+                <span class="mv-chart-sub">Top 8 by vote count</span>
+            </header>
+            <div class="mv-chart-body">
+                <canvas id="mvCandidateChart"
+                    data-ranking='{{ candidate_ranking | tojson }}'></canvas>
+            </div>
+        </article>
+        {% endif %}
+
+        {% if active_election and department_breakdown %}
+        <article class="mv-chart-card">
+            <header class="mv-chart-header">
+                <h3>Department Participation</h3>
+                <span class="mv-chart-sub">Active election</span>
+            </header>
+            <div class="mv-chart-body">
+                <canvas id="mvDepartmentChart"
+                    data-breakdown='{{ department_breakdown | tojson }}'></canvas>
+            </div>
+        </article>
+        {% endif %}
+    </div>
+</section>
+
+<!-- ============================================================
+     QUICK ACTIONS + SYSTEM HEALTH
+     ============================================================ -->
+<section class="mv-section mv-grid-2">
+    <div>
+        <header class="mv-section-header">
+            <div>
+                <h2 class="mv-section-title">Quick Actions</h2>
+                <p class="mv-section-sub">Jump directly into common administrator tasks.</p>
+            </div>
+        </header>
+        <div class="mv-quick-grid">
+            <a class="mv-quick-card" href="{{ url_for('elections.elections_page') }}">
+                <div class="mv-quick-icon">➕</div>
+                <div class="mv-quick-title">Create Election</div>
+                <div class="mv-quick-sub">Configure a new voting cycle</div>
+            </a>
+            <a class="mv-quick-card" href="{{ url_for('candidates.candidates_page') }}">
+                <div class="mv-quick-icon">👤</div>
+                <div class="mv-quick-title">Add Candidate</div>
+                <div class="mv-quick-sub">Register a new contestant</div>
+            </a>
+            <a class="mv-quick-card" href="{{ url_for('students.manage_students') }}">
+                <div class="mv-quick-icon">👥</div>
+                <div class="mv-quick-title">Add Student</div>
+                <div class="mv-quick-sub">Enroll a new voter</div>
+            </a>
+            <a class="mv-quick-card" href="{{ url_for('positions.positions_page') }}">
+                <div class="mv-quick-icon">📌</div>
+                <div class="mv-quick-title">Manage Positions</div>
+                <div class="mv-quick-sub">Configure roles for races</div>
+            </a>
+            <a class="mv-quick-card" href="{{ url_for('reports.reports_page') }}">
+                <div class="mv-quick-icon">📈</div>
+                <div class="mv-quick-title">View Reports</div>
+                <div class="mv-quick-sub">Inspect performance and exports</div>
+            </a>
+            <a class="mv-quick-card" href="{{ url_for('reports.results_page') }}">
+                <div class="mv-quick-icon">🏆</div>
+                <div class="mv-quick-title">View Results</div>
+                <div class="mv-quick-sub">Tally and publish outcomes</div>
+            </a>
+            <a class="mv-quick-card" href="{{ url_for('notifications.notifications_page') }}">
+                <div class="mv-quick-icon">📣</div>
+                <div class="mv-quick-title">Send Announcement</div>
+                <div class="mv-quick-sub">Publish a system notification</div>
+            </a>
+            <a class="mv-quick-card" href="{{ url_for('participation.participation_page') }}">
+                <div class="mv-quick-icon">📋</div>
+                <div class="mv-quick-title">Voter Participation</div>
+                <div class="mv-quick-sub">Track voted and pending students</div>
+            </a>
+        </div>
+    </div>
+
+    <aside class="mv-health-card">
+        <header class="mv-health-header">
+            <h3>System Health</h3>
+            <span class="mv-chart-sub">Live status indicators</span>
+        </header>
+        <ul class="mv-health-list">
+            <li class="mv-health-item {% if recent_failed_logins == 0 %}mv-ok{% elif recent_failed_logins <= 5 %}mv-warn{% else %}mv-crit{% endif %}">
+                <span class="mv-health-dot"></span>
+                <div class="mv-health-text">
+                    <strong>Authentication</strong>
+                    <span>
+                        {% if recent_failed_logins == 0 %}No recent failed logins
+                        {% else %}{{ recent_failed_logins }} failed attempts in the last 15 minutes
+                        {% endif %}
+                    </span>
+                </div>
+            </li>
+            <li class="mv-health-item {% if active_election %}mv-ok{% else %}mv-warn{% endif %}">
+                <span class="mv-health-dot"></span>
+                <div class="mv-health-text">
+                    <strong>Election Engine</strong>
+                    <span>
+                        {% if active_election %}
+                        {{ active_election.title }} is active
+                        {% else %}
+                        No active election
+                        {% endif %}
+                    </span>
+                </div>
+            </li>
+            <li class="mv-health-item mv-ok">
+                <span class="mv-health-dot"></span>
+                <div class="mv-health-text">
+                    <strong>Database</strong>
+                    <span>Connected · {{ kpis.total_elections }} elections, {{ kpis.total_students }} voters</span>
+                </div>
+            </li>
+            <li class="mv-health-item mv-info">
+                <span class="mv-health-dot"></span>
+                <div class="mv-health-text">
+                    <strong>Voter Participation</strong>
+                    <span>{{ kpis.students_voted }} of {{ kpis.total_students }} students have voted</span>
+                </div>
+            </li>
+            <li class="mv-health-item {% if recent_failed_logins > 5 %}mv-crit{% else %}mv-ok{% endif %}">
+                <span class="mv-health-dot"></span>
+                <div class="mv-health-text">
+                    <strong>Security Alerts</strong>
+                    <span>
+                        {% if recent_failed_logins > 5 %}Critical — review audit logs
+                        {% else %}No active security alerts{% endif %}
+                    </span>
+                </div>
+            </li>
+        </ul>
+        <a class="mv-link mv-link-sm" href="{{ url_for('logs.audit_logs_page') }}">Open audit logs →</a>
+    </aside>
+</section>
+
+<!-- ============================================================
+     RECENT ACTIVITY + NOTIFICATIONS
+     ============================================================ -->
+<section class="mv-section mv-grid-2">
+    <div class="mv-activity-card">
+        <header class="mv-section-header">
+            <div>
+                <h2 class="mv-section-title">Recent Activity</h2>
+                <p class="mv-section-sub">Latest administrator and system events.</p>
+            </div>
+            <a class="mv-link" href="{{ url_for('logs.audit_logs_page') }}">View all →</a>
+        </header>
+        {% if recent_activity %}
+        <ol class="mv-timeline">
+            {% for entry in recent_activity %}
+            <li class="mv-timeline-item mv-sev-{{ (entry.severity or 'Info') | lower }}">
+                <div class="mv-timeline-dot"></div>
+                <div class="mv-timeline-body">
+                    <div class="mv-timeline-head">
+                        <strong>{{ entry.action or 'Activity' }}</strong>
+                        <span class="mv-timeline-time">
+                            {{ entry.created_at.strftime('%d %b · %H:%M') if entry.created_at else '' }}
+                        </span>
+                    </div>
+                    <div class="mv-timeline-sub">
+                        {{ entry.module or 'System' }} ·
+                        {%- if entry.user_id|string == session.get('admin_id')|string -%}
+                            {{ entry.full_name or entry.username or 'You' }}
+                        {%- elif entry.full_name -%}
+                            {{ entry.full_name[:1] }}. {{ entry.full_name.split(' ')[-1][:1] }}. (redacted)
+                        {%- else -%}
+                            System
+                        {%- endif -%}
+                    </div>
+                    {% if entry.description %}
+                    <div class="mv-timeline-desc">{{ entry.description }}</div>
+                    {% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ol>
+        {% else %}
+        <div class="mv-empty-inline">
+            <span>📋</span> No recent activity recorded yet.
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="mv-notifications-card">
+        <header class="mv-section-header">
+            <div>
+                <h2 class="mv-section-title">Notifications</h2>
+                <p class="mv-section-sub">
+                    {% if unread_notifications %}
+                    {{ unread_notifications }} active
+                    {% else %}
+                    All caught up
+                    {% endif %}
+                </p>
+            </div>
+            <a class="mv-link" href="{{ url_for('notifications.notifications_page') }}">View all →</a>
+        </header>
+        {% if recent_notifications %}
+        <ul class="mv-notif-list">
+            {% for note in recent_notifications %}
+            <li class="mv-notif-item">
+                <div class="mv-notif-dot"></div>
+                <div class="mv-notif-body">
+                    <div class="mv-notif-text">{{ note.message }}</div>
+                    <div class="mv-notif-time">
+                        {{ note.created_at.strftime('%d %b %Y · %H:%M') if note.created_at else '' }}
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="mv-empty-inline">
+            <span>🔔</span> No notifications yet.
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- ============================================================
+     FOOTER
+     ============================================================ -->
+<footer class="mv-footer">
+    <div>
+        <strong>MyVoice</strong> · Election Control Center
+    </div>
+    <div class="mv-footer-meta">
+        <span>{{ current_org.organization_name if current_org else 'Default Organization' }}</span>
+        <span>·</span>
+        <span>Signed in as {{ current_admin.full_name }} ({{ current_admin.role or 'Administrator' }})</span>
+    </div>
+    <a class="mv-link" href="{{ url_for('auth.admin_logout') }}">Sign out →</a>
+</footer>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/admin-dashboard.js') }}"></script>
+{% endblock %}

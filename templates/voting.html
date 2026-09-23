@@ -1,0 +1,148 @@
+={% extends "base.html" %}
+
+{% block title %}Voting | {{ election.title }}{% endblock %}
+
+{% block content %}
+<div class="app-shell voting-shell">
+    <!-- Header -->
+    <header class="app-header">
+        <div class="app-brand">
+            <span class="app-badge">🗳️</span>
+            <div>
+                <h1>{{ election.title }}</h1>
+                <p>Cast your vote for each position below</p>
+            </div>
+        </div>
+        <div class="app-actions">
+            <a class="btn btn-secondary" href="{{ url_for('voting.voter_dashboard') }}">← Back</a>
+        </div>
+    </header>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert {% if category == 'error' %}alert-danger{% elif category == 'danger' %}alert-danger{% elif category == 'success' %}alert-success{% elif category == 'warning' %}alert-warning{% else %}alert-info{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Voting Header -->
+    <div class="voting-header">
+        <h2>Make Your Selections</h2>
+        <p>Choose one candidate for each position. Your vote is confidential.It  developed by   ITHARDWEAK</p>
+    </div>
+
+    <!-- Progress -->
+    <div class="voting-progress">
+        <div class="progress-labels">
+            <span>Ballot Progress</span>
+            <span>{{ positions|length }} Positions</span>
+        </div>
+        <div class="progress-track">
+            <div class="progress-bar" style="width: 100%;"></div>
+        </div>
+    </div>
+
+    <!-- Voting Form -->
+    <form method="POST" action="{{ url_for('voting.submit_vote') }}" id="votingForm">
+        <input type="hidden" name="election_id" value="{{ election.id }}">
+
+        {% for position in positions %}
+        <div class="position-section">
+            <div class="position-heading">
+                <div class="position-icon">📌</div>
+                <h3>{{ position.name }}</h3>
+                {% if position.description %}
+                <span class="votes-remaining">{{ position.description[:60] }}</span>
+                {% endif %}
+            </div>
+
+            {% set position_candidates = candidates|selectattr('position_id', 'equalto', position.id)|list %}
+            {% if position_candidates %}
+            <div class="candidates-grid">
+                {% for candidate in position_candidates %}
+                <label class="candidate-card">
+                    <input type="radio" name="candidate_id_{{ position.id }}" value="{{ candidate.id }}" required>
+                    <div class="candidate-card-inner">
+                        <div class="candidate-photo-wrapper">
+                            {% if candidate.photo %}
+                            <img src="/uploads/candidates/{{ candidate.photo }}" class="candidate-photo" alt="{{ candidate.full_name or candidate.name }}">
+                            {% else %}
+                            <div class="candidate-photo-fallback">{{ candidate.full_name[:1]|upper if candidate.full_name else candidate.name[:1]|upper }}</div>
+                            {% endif %}
+                            <div class="candidate-selected-badge">
+                                <span>✓</span>
+                            </div>
+                        </div>
+                        <div class="candidate-details">
+                            <h4 class="candidate-name">{{ candidate.full_name or candidate.name }}</h4>
+                            {% if candidate.student and candidate.student.class_name %}
+                            <div class="candidate-meta">
+                                <span class="meta-item">
+                                    <svg class="meta-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                                    </svg>
+                                    {{ candidate.student.class_name }}
+                                </span>
+                            </div>
+                            {% endif %}
+                            {% if candidate.student and candidate.student.department %}
+                            <div class="candidate-meta">
+                                <span class="meta-item">
+                                    <svg class="meta-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                    </svg>
+                                    {{ candidate.student.department }}
+                                </span>
+                            </div>
+                            {% endif %}
+                            {% if candidate.slogan %}
+                            <div class="candidate-slogan-box">
+                                <em>"{{ candidate.slogan }}"</em>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">👤</div>
+                <p>No candidates registered for this position yet.</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <div class="voting-submit">
+            <button type="submit" class="btn btn-lg btn-success">
+                <span>🗳️</span> Submit My Vote
+            </button>
+            <a href="{{ url_for('voting.voter_dashboard') }}" class="btn btn-lg btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Highlight selected candidate option
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.candidate-option input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                // Remove selected class from all options in this position group
+                const name = this.name;
+                document.querySelectorAll(`input[name="${name}"]`).forEach(input => {
+                    input.closest('.candidate-option').classList.remove('selected');
+                });
+                // Add selected class to the chosen option
+                this.closest('.candidate-option').classList.add('selected');
+            });
+        });
+    });
+</script>
+{% endblock %}

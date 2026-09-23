@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if system_settings and system_settings.system_name %}{{ system_settings.system_name }}{% else %}MyVoice Voting System{% endif %} | Admin Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+    <link rel="stylesheet" href="{{ url_for('theme_css') }}">
+</head>
+<body
+{% if system_settings and system_settings.admin_image %}
+style="background-image: url('{{ url_for('static', filename='uploads/' + system_settings.admin_image) }}');"
+{% endif %}
+>
+<div class="login-container">
+    <div class="login-card">
+        <div class="logo">
+            <h1>{% if system_settings and system_settings.system_name %}{{ system_settings.system_name }}{% else %}MyVoice{% endif %}</h1>
+            <p>{% if system_settings and system_settings.school_name %}{{ system_settings.school_name }}{% else %}Admin Portal{% endif %}</p>
+        </div>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <form method="POST" action="{{ url_for('auth.admin_login') }}">
+            <div class="form-group">
+                <label for="admin-username">Full Name</label>
+                <input type="text" id="admin-username" name="admin_username" placeholder="Enter your full name" required autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label for="admin-pwd">Password</label>
+                <input type="password" id="admin-pwd" name="admin_pwd" placeholder="Enter password" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn btn-primary">Login</button>
+        </form>
+        <a class="back-btn" href="{{ url_for('index') }}">&#8592; Back Home</a>
+        <a class="back-btn" href="{{ url_for('auth.admin_forgot_password') }}" style="color: var(--accent-color, #38bdf8);">Forgot Password?</a>
+    </div>
+</div>
+</body>
+</html>

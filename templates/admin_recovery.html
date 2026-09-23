@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Administrator Emergency Recovery | MyVoice{% endblock %}
+
+{% block body_class %}auth-page{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/recovery-pages.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="auth-card recovery-card">
+    <div class="auth-logo">
+        <div class="logo-icon">🛡️</div>
+        <h1>{% if system_settings and system_settings.system_name %}{{ system_settings.system_name }}{% else %}MyVoice{% endif %}</h1>
+        <p>Administrator Emergency Recovery</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert {% if category == 'error' %}alert-danger{% elif category == 'danger' %}alert-danger{% elif category == 'success' %}alert-success{% elif category == 'warning' %}alert-warning{% else %}alert-info{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if locked %}
+    <div class="recovery-locked">
+        <div class="locked-icon">🔒</div>
+        <h3>Recovery Temporarily Locked</h3>
+        <p>Too many unsuccessful recovery attempts.</p>
+        <p>Emergency recovery has been temporarily locked. Please contact the authorized MyVoice developer.</p>
+    </div>
+    {% else %}
+    {% if request_status == 'PENDING' %}
+    <div class="recovery-pending">
+        <div class="pending-icon">⏳</div>
+        <h3>Recovery Request Submitted</h3>
+        <p>Your request has been securely submitted to the authorized MyVoice developer.</p>
+        <p>Please contact the developer directly for verification.</p>
+        <p>Your request is currently: <strong>PENDING DEVELOPER REVIEW</strong></p>
+        <p class="muted">Once the developer verifies your request, they will provide the Developer Recovery Credential. Enter it below to proceed.</p>
+    </div>
+    {% endif %}
+
+    <h2 class="recovery-title">Verify Recovery Authorization</h2>
+    <p class="recovery-subtitle">Enter the Administrator Username and the Developer Recovery Credential supplied by the authorized developer.</p>
+
+    <form method="POST" id="recoveryForm" class="auth-form">
+        <div class="form-group">
+            <label for="username">Administrator Username</label>
+            <input type="text" id="username" name="username" class="form-control" placeholder="Enter administrator username" value="{{ username }}" required autocomplete="username" autofocus>
+        </div>
+
+        <div class="form-group">
+            <label for="recovery_credential">Developer Recovery Credential</label>
+            <div class="password-field">
+                <input type="password" id="recovery_credential" name="recovery_credential" class="form-control" placeholder="MYV-REC-XXXX-XXXX-XXXX-XXXX" required autocomplete="off">
+                <button type="button" class="toggle-password" data-target="recovery_credential" aria-label="Show or hide credential">👁</button>
+            </div>
+        </div>
+
+        <button type="submit" id="verifyBtn" class="btn btn-lg btn-block">
+            <span class="btn-label">🛡️ Verify Recovery</span>
+        </button>
+    </form>
+
+    <div class="recovery-info-note">
+        <strong>Information:</strong> This recovery procedure is intended for authorized administrators who have lost access to their account.
+    </div>
+    {% endif %}
+
+    <div class="security-status">
+        <span class="dot"></span> Emergency recovery is configured and protected
+    </div>
+
+    <a class="auth-back" href="{{ url_for('auth.admin_login') }}">← Back to Admin Login</a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.querySelectorAll('.toggle-password').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const input = document.getElementById(this.dataset.target);
+            if (!input) return;
+            const show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            this.textContent = show ? '🙈' : '👁';
+        });
+    });
+
+    const recoveryForm = document.getElementById('recoveryForm');
+    if (recoveryForm) {
+        recoveryForm.addEventListener('submit', function() {
+            const btn = document.getElementById('verifyBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner"></span> Verifying…';
+            }
+        });
+    }
+</script>
+{% endblock %}

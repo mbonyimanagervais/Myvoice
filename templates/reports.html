@@ -1,0 +1,169 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Reports | MyVoice{% endblock %}
+
+{% block admin_content %}
+<!-- Page Header -->
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Enterprise Reporting & Business Intelligence</span>
+        <h1>Executive Dashboard</h1>
+        <p>Monitor turnout, candidate performance, participation trends, and audit-ready summaries from a single administrative workspace.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn" href="{{ url_for('reports.export_results') }}">📥 Export CSV</a>
+        <a class="btn btn-secondary" href="{{ url_for('reports.results_page') }}">📊 View Results</a>
+        <form method="post" action="{{ url_for('reports.reset_votes_route') }}" style="display:inline;" onsubmit="return confirm('This will delete all election information, student records, names, numbers, and vote data. Continue?');">
+            <button class="btn btn-danger" type="submit">🔄 Reset All</button>
+        </form>
+    </div>
+</div>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert {% if category == 'error' %}alert-danger{% elif category == 'danger' %}alert-danger{% elif category == 'success' %}alert-success{% elif category == 'warning' %}alert-warning{% else %}alert-info{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<!-- KPI Cards -->
+<div class="widget-grid">
+    {% for card in kpi_cards %}
+    <div class="widget-card card-hover">
+        <div class="d-flex justify-between align-center mb-2">
+            <span style="font-size: 24px;">{{ card.icon }}</span>
+            <span class="badge badge-success">{{ card.trend }}</span>
+        </div>
+        <h4>{{ card.label }}</h4>
+        <p class="widget-value">{{ card.value }}</p>
+        <p class="widget-caption">{{ card.detail }}</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Participation Analytics -->
+<div class="card">
+    <div class="card-header">
+        <h3>📈 Participation Analytics</h3>
+        <span class="card-subtitle">Current turnout and outstanding voter engagement</span>
+    </div>
+    <div class="progress-block">
+        <div class="progress-labels">
+            <span>Participation</span>
+            <strong>{{ participation.participation_rate }}%</strong>
+        </div>
+        <div class="progress-track">
+            <div class="progress-bar" style="width: {{ participation.participation_rate }}%"></div>
+        </div>
+    </div>
+    <div class="stat-grid">
+        <div class="stat-card stat-success">
+            <div class="stat-label">Voted</div>
+            <div class="stat-value">{{ participation.students_voted }}</div>
+        </div>
+        <div class="stat-card stat-warning">
+            <div class="stat-label">Not Voted</div>
+            <div class="stat-value">{{ participation.students_remaining }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Registered</div>
+            <div class="stat-value">{{ participation.registered_students }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Publish Results -->
+<div class="card">
+    <div class="card-header">
+        <h3>📢 Publish Results to Voters</h3>
+        <span class="card-subtitle">Release the final results after voting closes so voters can view them from their dashboard</span>
+    </div>
+    <div class="d-flex flex-column gap-2">
+        {% for election in elections[:6] %}
+        <div class="d-flex justify-between align-center" style="padding: 12px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--surface-alt);">
+            <div>
+                <strong>{{ election.title }}</strong>
+                <span class="badge {% if election.status == 'Active' %}badge-success{% elif election.status == 'Closed' %}badge-danger{% else %}badge-neutral{% endif %} ml-2">{{ election.status }}</span>
+            </div>
+            <div>
+                {% if election.show_live_results %}
+                <form method="post" action="{{ url_for('reports.unpublish_results_route', election_id=election.id) }}" style="display:inline;">
+                    <button class="btn btn-sm btn-secondary" type="submit">🙈 Hide from Voters</button>
+                </form>
+                {% elif election.status in ['Closed', 'Archived'] %}
+                <form method="post" action="{{ url_for('reports.publish_results_route', election_id=election.id) }}" style="display:inline;">
+                    <button class="btn btn-sm btn-success" type="submit">📤 Send to Voters</button>
+                </form>
+                {% else %}
+                <span class="text-muted" style="font-size: 13px;">Voting still open</span>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">🗳️</div>
+            <p>No elections yet</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Student Tracking -->
+<div class="table-card">
+    <div class="card-header">
+        <h3>👥 Student Tracking</h3>
+        <span class="card-subtitle">Student number, name, class, department, and vote status for quick follow-up</span>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Student No.</th>
+                    <th>Student Name</th>
+                    <th>Class</th>
+                    <th>Department</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in student_tracking %}
+                <tr>
+                    <td>{{ student.student_id }}</td>
+                    <td><strong>{{ student.full_name }}</strong></td>
+                    <td>{{ student.class_name }}</td>
+                    <td>{{ student.department }}</td>
+                    <td>
+                        {% if student.vote_status == 'Voted' %}
+                        <span class="badge badge-success">Voted</span>
+                        {% else %}
+                        <span class="badge badge-warning">Not Voted</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center">No active students found</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Export Center -->
+<div class="card">
+    <div class="card-header">
+        <h3>📥 Export Center</h3>
+        <span class="card-subtitle">Generate professional exports for administrators, auditors, and stakeholders</span>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn" href="{{ url_for('reports.export_results') }}">📄 Export CSV</a>
+        <a class="btn btn-secondary" href="{{ url_for('reports.export_voted_students_excel') }}">📊 Excel: Voted</a>
+        <a class="btn btn-secondary" href="{{ url_for('reports.export_not_voted_students_excel') }}">📊 Excel: Not Voted</a>
+    </div>
+</div>
+{% endblock %}

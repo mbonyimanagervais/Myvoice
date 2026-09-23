@@ -1,0 +1,232 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Manage Students | MyVoice{% endblock %}
+
+{% block admin_content %}
+<!-- Page Header -->
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Student Administration</span>
+        <h1>Student Management</h1>
+        <p>Manage student records, filters, and imports with a polished professional admin experience.</p>
+    </div>
+    <a class="btn btn-secondary" href="{{ url_for('admin_home') }}">← Back to Dashboard</a>
+</div>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert {% if category == 'error' %}alert-danger{% elif category == 'danger' %}alert-danger{% elif category == 'success' %}alert-success{% elif category == 'warning' %}alert-warning{% else %}alert-info{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<!-- Stats -->
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-label">Total Students</div>
+        <div class="stat-value">{{ stats.total_students }}</div>
+    </div>
+    <div class="stat-card stat-success">
+        <div class="stat-label">Active</div>
+        <div class="stat-value">{{ stats.active_students }}</div>
+    </div>
+    <div class="stat-card stat-danger">
+        <div class="stat-label">Disabled</div>
+        <div class="stat-value">{{ stats.disabled_students }}</div>
+    </div>
+    <div class="stat-card stat-info">
+        <div class="stat-label">Voted</div>
+        <div class="stat-value">{{ stats.voted_students }}</div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-label">Not Voted</div>
+        <div class="stat-value">{{ stats.not_voted_students }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Participation</div>
+        <div class="stat-value">{{ stats.participation_rate }}%</div>
+    </div>
+</div>
+
+<!-- Add/Edit Student Form -->
+<div class="card">
+    <div class="card-header">
+        <h3>{% if edit_student %}✏️ Edit Student{% else %}➕ Add New Student{% endif %}</h3>
+    </div>
+    <form action="{{ url_for('students.manage_students') }}" method="POST">
+        <input type="hidden" name="action" value="{% if edit_student %}update{% else %}add{% endif %}">
+        {% if edit_student %}<input type="hidden" name="student_id_to_update" value="{{ edit_student.id }}">{% endif %}
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" name="full_name" class="form-control" value="{{ edit_student.full_name if edit_student else '' }}" required>
+            </div>
+            <div class="form-group">
+                <label>Student ID</label>
+                <input type="text" name="student_id" class="form-control" value="{{ edit_student.student_id if edit_student else '' }}" required>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Class</label>
+                <input type="text" name="class_name" class="form-control" value="{{ edit_student.class_name if edit_student else '' }}">
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Department</label>
+                <input type="text" name="department" class="form-control" value="{{ edit_student.department if edit_student else '' }}">
+            </div>
+            {% if not edit_student %}
+            <div class="form-group">
+                <label>Password (Optional)</label>
+                <input type="password" name="password" class="form-control" placeholder="Leave blank for default">
+            </div>
+            {% endif %}
+        </div>
+
+        <button type="submit" class="btn">
+            {% if edit_student %}✏️ Update Student{% else %}➕ Add Student{% endif %}
+        </button>
+    </form>
+</div>
+
+<!-- Search & Filter -->
+<div class="card">
+    <div class="card-header">
+        <h3>🔍 Search and Filter</h3>
+    </div>
+    <form method="GET" class="filter-form">
+        <div class="form-group">
+            <label>Search</label>
+            <input type="text" name="search" class="form-control" placeholder="Search by name or ID" value="{{ request.args.get('search','') }}">
+        </div>
+        <div class="form-group">
+            <label>Class</label>
+            <select name="class_filter" class="form-control">
+                <option value="">All Classes</option>
+                {% for item in classes %}<option value="{{ item }}" {% if request.args.get('class_filter') == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Department</label>
+            <select name="department_filter" class="form-control">
+                <option value="">All Departments</option>
+                {% for item in departments %}<option value="{{ item }}" {% if request.args.get('department_filter') == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Status</label>
+            <select name="status_filter" class="form-control">
+                <option value="">All Status</option>
+                <option value="Active" {% if request.args.get('status_filter') == 'Active' %}selected{% endif %}>Active</option>
+                <option value="Disabled" {% if request.args.get('status_filter') == 'Disabled' %}selected{% endif %}>Disabled</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Vote Status</label>
+            <select name="vote_filter" class="form-control">
+                <option value="">All Vote Status</option>
+                <option value="Voted" {% if request.args.get('vote_filter') == 'Voted' %}selected{% endif %}>Voted</option>
+                <option value="Not Voted" {% if request.args.get('vote_filter') == 'Not Voted' %}selected{% endif %}>Not Voted</option>
+            </select>
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="btn">Filter</button>
+        </div>
+    </form>
+</div>
+
+<!-- Bulk Import -->
+<div class="card">
+    <div class="card-header">
+        <h3>📥 Bulk Import</h3>
+    </div>
+    <p style="margin-bottom: 1rem; color: #6b7280;">Import students via CSV/Excel file or JSON array. Only <strong>name</strong> and <strong>student_id</strong> are required. All other fields are optional.</p>
+    <form action="{{ url_for('students.manage_students') }}" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="action" value="upload_excel">
+        
+        <div class="form-group">
+            <label>Upload CSV, Excel, or JSON File</label>
+            <input type="file" name="excel_file" class="form-control" accept=".xlsx, .xls, .csv, .json">
+            <div class="hint">Supported formats: .xlsx, .xls, .csv, .json</div>
+        </div>
+
+        <div class="form-group">
+            <label>Or Paste JSON Array</label>
+            <textarea name="json_data" class="form-control" rows="6" placeholder='[{"student_id": "001", "name": "John Doe", "class_name": "Form 1"}, {"student_id": "002", "name": "Jane Smith"}]'></textarea>
+            <div class="hint">Paste a JSON array of student objects. Only student_id and name are required.</div>
+        </div>
+
+        <button type="submit" class="btn btn-success">📥 Import Students</button>
+    </form>
+</div>
+
+<!-- Students Table -->
+<div class="table-card">
+    <div class="card-header">
+        <h3>📋 Registered Students</h3>
+        <span class="badge badge-primary">{{ students|length }} Records</span>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>ID</th>
+                    <th>Class</th>
+                    <th>Department</th>
+                    <th>Status</th>
+                    <th>Vote Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                <tr>
+                    <td><strong>{{ student.full_name }}</strong></td>
+                    <td>{{ student.student_id }}</td>
+                    <td>{{ student.class_name or '-' }}</td>
+                    <td>{{ student.department or '-' }}</td>
+                    <td>
+                        {% if student.status == 'Active' %}
+                        <span class="badge badge-success">Active</span>
+                        {% else %}
+                        <span class="badge badge-danger">Disabled</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if student.vote_status == 'Voted' %}
+                        <span class="badge badge-info">Voted</span>
+                        {% else %}
+                        <span class="badge badge-warning">Not Voted</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="actions-cell">
+                            <a href="{{ url_for('students.edit_student', id=student.id) }}" class="btn btn-sm btn-secondary">✏️ Edit</a>
+                            <a href="{{ url_for('students.reset_student_password', id=student.id) }}" class="btn btn-sm btn-warning">🔑 Reset</a>
+                            <form method="post" action="{{ url_for('students.toggle_student_status', id=student.id) }}" style="display:inline;">
+                                <button type="submit" class="btn btn-sm {% if student.status == 'Active' %}btn-danger{% else %}btn-success{% endif %}">
+                                    {% if student.status == 'Active' %}🚫 Disable{% else %}✅ Enable{% endif %}
+                                </button>
+                            </form>
+                            <a href="{{ url_for('students.delete_student', id=student.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Delete this student?')">🗑️ Delete</a>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center">No students found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

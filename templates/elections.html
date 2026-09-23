@@ -1,0 +1,237 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Election Management | MyVoice{% endblock %}
+
+{% block admin_content %}
+<!-- Page Header -->
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Election Operations</span>
+        <h1>Election Management</h1>
+        <p>Professional election operations, validation, and monitoring.</p>
+    </div>
+    <a class="btn btn-secondary" href="{{ url_for('admin_home') }}">← Back to Dashboard</a>
+</div>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert {% if category == 'error' %}alert-danger{% elif category == 'danger' %}alert-danger{% elif category == 'success' %}alert-success{% elif category == 'warning' %}alert-warning{% else %}alert-info{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<!-- Stats -->
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-label">Total Elections</div>
+        <div class="stat-value">{{ stats.total_elections }}</div>
+    </div>
+    <div class="stat-card stat-info">
+        <div class="stat-label">Ready</div>
+        <div class="stat-value">{{ stats.ready_elections }}</div>
+    </div>
+    <div class="stat-card stat-success">
+        <div class="stat-label">Active</div>
+        <div class="stat-value">{{ stats.active_elections }}</div>
+    </div>
+    <div class="stat-card stat-danger">
+        <div class="stat-label">Closed</div>
+        <div class="stat-value">{{ stats.closed_elections }}</div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-label">Turnout</div>
+        <div class="stat-value">{{ stats.turnout_percentage }}%</div>
+    </div>
+</div>
+
+<!-- Widgets -->
+<div class="widget-grid">
+    <div class="widget-card">
+        <h4>Current Election Status</h4>
+        <p class="widget-value">{{ elections[0].status if elections else 'No election yet' }}</p>
+        <p class="widget-caption">The most recent election is shown here for quick monitoring.</p>
+    </div>
+    <div class="widget-card">
+        <h4>Voting Participation</h4>
+        <p class="widget-value">{{ stats.turnout_percentage }}%</p>
+        <p class="widget-caption">Live turnout percentage across all elections.</p>
+    </div>
+    <div class="widget-card">
+        <h4>Total Candidates</h4>
+        <p class="widget-value">{{ stats.total_candidates }}</p>
+        <p class="widget-caption">Candidate records currently available in the system.</p>
+    </div>
+    <div class="widget-card">
+        <h4>Active Positions</h4>
+        <p class="widget-value">{{ stats.total_positions }}</p>
+        <p class="widget-caption">Configured positions ready for assignment.</p>
+    </div>
+</div>
+
+<!-- Create Election -->
+<div class="card">
+    <div class="card-header">
+        <h3>➕ Create Election</h3>
+    </div>
+    <form method="POST" action="{{ url_for('elections.add_election') }}">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Election Name</label>
+                <input name="title" class="form-control" placeholder="Election Name" required>
+            </div>
+            <div class="form-group">
+                <label>Election Year</label>
+                <input name="election_year" class="form-control" placeholder="Year">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Description</label>
+            <textarea name="description" class="form-control" placeholder="Description"></textarea>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Instructions</label>
+                <textarea name="instructions" class="form-control" placeholder="Election instructions"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Welcome Message</label>
+                <textarea name="welcome_message" class="form-control" placeholder="Welcome message"></textarea>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Help Information</label>
+                <textarea name="help_information" class="form-control" placeholder="Help guidance"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Visibility</label>
+                <select name="visibility" class="form-control">
+                    <option value="Visible">Visible</option>
+                    <option value="Hidden">Hidden</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Theme Color</label>
+                <input type="color" name="theme_color" class="form-control" value="#2563eb" style="height: 46px; padding: 4px;">
+            </div>
+            <div class="form-group">
+                <label>Max Votes Per Position</label>
+                <input type="number" name="max_votes_per_position" class="form-control" value="1" min="1">
+            </div>
+        </div>
+
+        <div class="checkbox-grid">
+            <label class="form-checkbox"><input type="checkbox" name="allow_student_login_before_election" checked> Allow student login before election</label>
+            <label class="form-checkbox"><input type="checkbox" name="show_live_results"> Show live results</label>
+            <label class="form-checkbox"><input type="checkbox" name="auto_close" checked> Auto close at end time</label>
+            <label class="form-checkbox"><input type="checkbox" name="auto_archive" checked> Auto archive after closing</label>
+            <label class="form-checkbox"><input type="checkbox" name="enable_candidate_photos" checked> Enable candidate photos</label>
+            <label class="form-checkbox"><input type="checkbox" name="enable_candidate_manifestos" checked> Enable candidate manifestos</label>
+            <label class="form-checkbox"><input type="checkbox" name="allow_blank_votes"> Allow blank votes</label>
+            <label class="form-checkbox"><input type="checkbox" name="enable_vote_confirmation" checked> Enable confirmation screen</label>
+            <label class="form-checkbox"><input type="checkbox" name="enable_vote_receipts"> Enable vote receipts</label>
+            <label class="form-checkbox"><input type="checkbox" name="require_final_confirmation" checked> Require final confirmation</label>
+        </div>
+
+        <button class="btn btn-success" type="submit">➕ Create Election</button>
+    </form>
+</div>
+
+<!-- Election List -->
+<div class="table-card">
+    <div class="card-header">
+        <h3>📋 Election List</h3>
+        <span class="badge badge-primary">{{ elections|length }} Elections</span>
+    </div>
+
+    <form method="GET" class="filter-form">
+        <div class="form-group">
+            <label>Search</label>
+            <input type="text" name="search" class="form-control" value="{{ search }}" placeholder="Search by election title">
+        </div>
+        <div class="form-group">
+            <label>Status</label>
+            <select name="status_filter" class="form-control">
+                <option value="">All Status</option>
+                {% for item in statuses %}
+                <option value="{{ item }}" {% if status_filter == item %}selected{% endif %}>{{ item }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Year</label>
+            <select name="year_filter" class="form-control">
+                <option value="">All Years</option>
+                {% for item in years %}
+                <option value="{{ item }}" {% if year_filter == item %}selected{% endif %}>{{ item }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-actions">
+            <button class="btn" type="submit">Filter</button>
+        </div>
+    </form>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Election</th>
+                    <th>Status</th>
+                    <th>Year</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for election in elections %}
+                <tr>
+                    <td>
+                        <strong>{{ election.title }}</strong><br>
+                        <small class="text-muted">{{ election.description or 'No description added yet.' }}</small>
+                    </td>
+                    <td>
+                        {% if election.status == 'Active' %}
+                        <span class="badge badge-success">Open</span>
+                        {% elif election.status == 'Ready' %}
+                        <span class="badge badge-info">Open</span>
+                        {% elif election.status == 'Closed' %}
+                        <span class="badge badge-danger">Closed</span>
+                        {% else %}
+                        <span class="badge badge-neutral">{{ election.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ election.election_year or '-' }}</td>
+                    <td>
+                        <div class="actions-cell">
+                            <a class="btn btn-sm" href="{{ url_for('elections.toggle_election_status', id=election.id) }}">🔄 Open / Close</a>
+                            <a class="btn btn-sm btn-secondary" href="{{ url_for('reports.results_page') }}?election_id={{ election.id }}">📊 View Results</a>
+                            <a class="btn btn-sm btn-danger" href="{{ url_for('elections.delete_election', id=election.id) }}" onclick="return confirm('Delete this election?')">🗑️ Delete</a>
+                        </div>
+                        <div class="mt-2">
+                            <span class="badge badge-neutral">{{ election.visibility or 'Visible' }}</span>
+                            {% if election.theme_color %}
+                            <span class="badge badge-neutral" style="background: {{ election.theme_color }}; color: #fff;">{{ election.theme_color }}</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center">No elections found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

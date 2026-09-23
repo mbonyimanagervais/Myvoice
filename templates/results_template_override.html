@@ -1,0 +1,214 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Election Results | MyVoice{% endblock %}
+
+{% block admin_content %}
+<!-- Page Header -->
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Results Management</span>
+        <h1>🏆 Election Results</h1>
+        <p>Review live tallies, publish outcomes, and manage result visibility.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-secondary" href="{{ url_for('admin_home') }}">← Back to Dashboard</a>
+    </div>
+</div>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert {% if category == 'error' %}alert-danger{% elif category == 'danger' %}alert-danger{% elif category == 'success' %}alert-success{% elif category == 'warning' %}alert-warning{% else %}alert-info{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<!-- Election Selector -->
+<div class="card">
+    <div class="card-header">
+        <h3>🗳️ Select Election</h3>
+    </div>
+    <form method="get" action="{{ url_for('reports.results_page') }}" class="d-flex gap-2 align-center flex-wrap">
+        <select id="election_id" name="election_id" class="form-control" onchange="this.form.submit()" style="max-width: 400px;">
+            <option value="">All Elections</option>
+            {% for election in elections %}
+            <option value="{{ election.id }}" {% if selected_election_id == election.id %}selected{% endif %}>{{ election.title }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn" type="submit">View Results</button>
+    </form>
+</div>
+
+<!-- Stats -->
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-label">Total Votes</div>
+        <div class="stat-value">{{ stats.total_votes }}</div>
+    </div>
+    <div class="stat-card stat-info">
+        <div class="stat-label">Positions</div>
+        <div class="stat-value">{{ stats.total_positions }}</div>
+    </div>
+    <div class="stat-card stat-success">
+        <div class="stat-label">Candidates</div>
+        <div class="stat-value">{{ stats.total_candidates }}</div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-label">Participation</div>
+        <div class="stat-value">{{ stats.participation.participation_rate }}%</div>
+    </div>
+</div>
+
+<!-- Participation Summary -->
+<div class="card">
+    <div class="card-header">
+        <h3>📈 Participation Summary</h3>
+    </div>
+    <div class="stat-grid">
+        <div class="stat-card">
+            <div class="stat-label">Registered</div>
+            <div class="stat-value">{{ stats.participation.registered_students }}</div>
+        </div>
+        <div class="stat-card stat-success">
+            <div class="stat-label">Voted</div>
+            <div class="stat-value">{{ stats.participation.students_voted }}</div>
+        </div>
+        <div class="stat-card stat-warning">
+            <div class="stat-label">Remaining</div>
+            <div class="stat-value">{{ stats.participation.students_remaining }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Publication Controls -->
+<div class="card">
+    <div class="card-header">
+        <h3>📢 Publication Controls</h3>
+        <span class="card-subtitle">Manage result visibility for voters</span>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        {% if selected_election_id %}
+            {% set current_election = elections | selectattr('id', 'equalto', selected_election_id) | first %}
+            {% if current_election %}
+                {% if current_election.show_live_results %}
+                <form method="post" action="{{ url_for('reports.unpublish_results_route', election_id=current_election.id) }}" style="display:inline;">
+                    <button class="btn btn-warning" type="submit">🙈 Hide Results</button>
+                </form>
+                {% else %}
+                <form method="post" action="{{ url_for('reports.publish_results_route', election_id=current_election.id) }}" style="display:inline;">
+                    <button class="btn btn-success" type="submit">📤 Publish Results</button>
+                </form>
+                {% endif %}
+            {% endif %}
+        {% endif %}
+        <a class="btn" href="{{ url_for('reports.export_results') }}">📥 Export CSV</a>
+    </div>
+</div>
+
+<div class="card" style="border: 2px solid {% if allow_voter_results %}#22c55e{% else %}#94a3b8{% endif %};">
+    <div class="card-header">
+        <h3>🔒 Release Results to Voters</h3>
+        <span class="card-subtitle">Results Broadcast: <strong>{% if allow_voter_results %}ON{% else %}OFF{% endif %}</strong></span>
+    </div>
+    <form method="post" action="{{ url_for('update_voter_results_visibility') }}" class="d-flex align-items-center gap-3 flex-wrap">
+        <label class="d-flex align-items-center gap-2" style="font-weight: 700; margin: 0; color: #0f172a;">
+            <span>OFF</span>
+            <span style="position: relative; display: inline-block; width: 62px; height: 34px; border-radius: 999px; background: {% if allow_voter_results %}#22c55e{% else %}#cbd5e1{% endif %}; box-shadow: inset 0 0 0 2px rgba(15,23,42,0.08);">
+                <input type="checkbox" name="allow_voter_results" {% if allow_voter_results %}checked{% endif %} style="position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer;">
+                <span style="position:absolute; top:4px; left:{% if allow_voter_results %}30px{% else %}4px{% endif %}; width: 24px; height: 24px; border-radius: 50%; background: white; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15); transition: all 0.2s ease;"></span>
+            </span>
+            <span>ON</span>
+        </label>
+        <button class="btn btn-primary" type="submit">Update Broadcast</button>
+    </form>
+</div>
+
+<!-- Category-Level Broadcast Controls -->
+{% if selected_election_id and categories %}
+<div class="card">
+    <div class="card-header">
+        <h3>📡 Category Broadcast Control</h3>
+        <span class="card-subtitle">Broadcast or wipe results per race category. Voters see results only for categories marked Published.</span>
+    </div>
+    <div class="d-flex flex-column gap-3">
+        {% for cat in categories %}
+        <div class="d-flex align-center justify-between p-3 border-radius" style="background: rgba(37, 99, 235, 0.05);">
+            <div>
+                <strong>{{ cat.name }}</strong>
+                <span class="text-muted"> — {{ cat.description or 'Race category results' }}</span>
+            </div>
+            <div class="d-flex gap-2 align-center">
+                {% if cat.is_published %}
+                <span class="badge badge-success">📡 Published</span>
+                <form method="post" action="{{ url_for('reports.unpublish_category_route', category_id=cat.id) }}" style="display:inline;">
+                    <input type="hidden" name="election_id" value="{{ selected_election_id }}">
+                    <button class="btn btn-sm btn-warning" type="submit">🙈 Wipe</button>
+                </form>
+                {% else %}
+                <span class="badge badge-neutral">🔒 Hidden</span>
+                <form method="post" action="{{ url_for('reports.publish_category_route', category_id=cat.id) }}" style="display:inline;">
+                    <input type="hidden" name="election_id" value="{{ selected_election_id }}">
+                    <button class="btn btn-sm btn-success" type="submit">📤 Broadcast</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Results by Position -->
+{% if results and results|map(attribute='candidates')|sum(start=[]) %}
+    {% for result in results %}
+    <div class="result-position">
+        <div class="d-flex justify-between align-center mb-2">
+            <h3>📌 {{ result.position_name }}</h3>
+            <span class="badge badge-primary">{{ result.total_votes }} Votes</span>
+        </div>
+        <p class="text-muted mb-3"><strong>Election:</strong> {{ result.election_title }}</p>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Candidate</th>
+                        <th>Votes</th>
+                        <th>Percentage</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for candidate in result.candidates %}
+                    <tr class="{% if loop.first %}winner{% endif %}">
+                        <td><span class="badge {% if loop.first %}badge-success{% else %}badge-neutral{% endif %}">#{{ candidate.rank }}</span></td>
+                        <td>
+                            <strong>{{ candidate.candidate_name }}</strong>
+                        </td>
+                        <td>{{ candidate.votes }}</td>
+                        <td>{{ candidate.percentage }}%</td>
+                        <td>
+                            {% if loop.first %}
+                            <span class="badge badge-success">👑 Winner</span>
+                            {% else %}
+                            <span class="badge badge-neutral">Candidate</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+<div class="card empty-state">
+    <div class="empty-icon">📊</div>
+    <h3>No Results Available</h3>
+    <p>No ballots are currently recorded for this election. Voting has been reset and the results view is empty.</p>
+</div>
+{% endif %}
+{% endblock %}

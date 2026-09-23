@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block body_class %}main-with-sidebar{% endblock %}
+
+{% block content %}
+<!-- Mobile menu button -->
+<button class="btn btn-icon mobile-menu-btn" style="position: fixed; top: 16px; left: 16px; z-index: 1001;" onclick="toggleSidebar()">
+    ☰
+</button>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="appSidebar">
+    <div class="sidebar-brand">
+        <span class="app-badge">MV</span>
+        <div>
+            <strong style="font-size: 15px;">{% if system_settings and system_settings.system_name %}{{ system_settings.system_name }}{% else %}MyVoice{% endif %}</strong>
+            <div style="font-size: 12px; color: var(--text-muted);">Admin Console</div>
+        </div>
+    </div>
+
+    <nav class="sidebar-nav">
+        <a class="sidebar-link {% if request.endpoint == 'admin_home' %}active{% endif %}" href="{{ url_for('admin_home') }}">
+            <span class="nav-icon">📊</span> Dashboard
+        </a>
+        <a class="sidebar-link {% if request.endpoint and request.endpoint.startswith('students.') %}active{% endif %}" href="{{ url_for('students.manage_students') }}">
+            <span class="nav-icon">👥</span> Students
+        </a>
+        <a class="sidebar-link {% if request.endpoint and request.endpoint.startswith('elections.') %}active{% endif %}" href="{{ url_for('elections.elections_page') }}">
+            <span class="nav-icon">🗳️</span> Elections
+        </a>
+        <a class="sidebar-link {% if request.endpoint and request.endpoint.startswith('positions.') %}active{% endif %}" href="{{ url_for('positions.positions_page') }}">
+            <span class="nav-icon">📌</span> Positions
+        </a>
+        <a class="sidebar-link {% if request.endpoint and request.endpoint.startswith('candidates.') %}active{% endif %}" href="{{ url_for('candidates.candidates_page') }}">
+            <span class="nav-icon">👤</span> Candidates
+        </a>
+        <a class="sidebar-link {% if request.endpoint and request.endpoint.startswith('reports.') %}active{% endif %}" href="{{ url_for('reports.reports_page') }}">
+            <span class="nav-icon">📈</span> Reports
+        </a>
+        <a class="sidebar-link {% if request.endpoint == 'reports.results_page' %}active{% endif %}" href="{{ url_for('reports.results_page') }}">
+            <span class="nav-icon">🏆</span> Results
+        </a>
+        <a class="sidebar-link {% if request.endpoint and request.endpoint.startswith('notifications.') %}active{% endif %}" href="{{ url_for('notifications.notifications_page') }}">
+            <span class="nav-icon">🔔</span> Notifications
+        </a>
+        <a class="sidebar-link {% if request.endpoint and request.endpoint.startswith('participation.') %}active{% endif %}" href="{{ url_for('participation.participation_page') }}">
+            <span class="nav-icon">📋</span> Voter Participation
+        </a>
+        <a class="sidebar-link {% if request.endpoint and request.endpoint.startswith('logs.') %}active{% endif %}" href="{{ url_for('logs.audit_logs_page') }}">
+            <span class="nav-icon">📋</span> Audit Logs
+        </a>
+        <a class="sidebar-link {% if request.endpoint and request.endpoint.startswith('settings.') %}active{% endif %}" href="{{ url_for('settings.settings_page') }}">
+            <span class="nav-icon">⚙️</span> Settings
+        </a>
+<a class="sidebar-link {% if request.endpoint == 'auth.admin_recovery_requests' %}active{% endif %}" href="{{ url_for('auth.admin_recovery_requests') }}">
+            <span class="nav-icon">🔑</span> Recovery Requests
+        </a>
+    </nav>
+</aside>
+
+<!-- Sidebar overlay for mobile -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- Main content -->
+<main class="app-shell" style="padding-top: 60px;">
+    {% block admin_content %}{% endblock %}
+</main>
+{% endblock %}

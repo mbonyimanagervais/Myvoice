@@ -1,0 +1,203 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Audit Logs | MyVoice{% endblock %}
+
+{% block admin_content %}
+<!-- Page Header -->
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Security & Accountability</span>
+        <h1>📋 System Audit Logs</h1>
+        <p>Inspect administrator activity, system events, and security-related information.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn" href="{{ url_for('logs.export_logs') }}">📥 Export Logs</a>
+        <a class="btn btn-secondary" href="{{ url_for('logs.audit_logs_page') }}">🔄 Refresh</a>
+        <a class="btn btn-danger" href="{{ url_for('logs.clear_logs') }}" onclick="return confirm('Clear ALL audit logs? This cannot be undone!')">🗑️ Clear All</a>
+    </div>
+</div>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert {% if category == 'error' %}alert-danger{% elif category == 'danger' %}alert-danger{% elif category == 'success' %}alert-success{% elif category == 'warning' %}alert-warning{% else %}alert-info{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<!-- Stats -->
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-label">Total Activities</div>
+        <div class="stat-value">{{ stats.total if stats else 0 }}</div>
+    </div>
+    <div class="stat-card stat-success">
+        <div class="stat-label">Successful</div>
+        <div class="stat-value">{{ stats.successful if stats else 0 }}</div>
+    </div>
+    <div class="stat-card stat-danger">
+        <div class="stat-label">Failed</div>
+        <div class="stat-value">{{ stats.failed if stats else 0 }}</div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-label">Critical</div>
+        <div class="stat-value">{{ stats.critical if stats else 0 }}</div>
+    </div>
+    <div class="stat-card stat-info">
+        <div class="stat-label">Admin Logins</div>
+        <div class="stat-value">{{ stats.admin_logins if stats else 0 }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Student Logins</div>
+        <div class="stat-value">{{ stats.student_logins if stats else 0 }}</div>
+    </div>
+</div>
+
+<!-- Filter Form -->
+<div class="card">
+    <div class="card-header">
+        <h3>🔍 Filter Logs</h3>
+    </div>
+    <form method="get" action="{{ url_for('logs.audit_logs_page') }}" class="filter-form">
+        <div class="form-group">
+            <label>Username / Name</label>
+            <input type="text" name="username" class="form-control" placeholder="Username or name" value="{{ request.args.get('username', '') }}">
+        </div>
+        <div class="form-group">
+            <label>Action</label>
+            <input type="text" name="action" class="form-control" placeholder="Action" value="{{ request.args.get('action', '') }}">
+        </div>
+        <div class="form-group">
+            <label>Module</label>
+            <input type="text" name="module" class="form-control" placeholder="Module" value="{{ request.args.get('module', '') }}">
+        </div>
+        <div class="form-group">
+            <label>Severity</label>
+            <select name="severity" class="form-control">
+                <option value="">All Severity</option>
+                <option value="Info" {% if request.args.get('severity') == 'Info' %}selected{% endif %}>Info</option>
+                <option value="Warning" {% if request.args.get('severity') == 'Warning' %}selected{% endif %}>Warning</option>
+                <option value="Critical" {% if request.args.get('severity') == 'Critical' %}selected{% endif %}>Critical</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Status</label>
+            <select name="status" class="form-control">
+                <option value="">All Status</option>
+                <option value="Success" {% if request.args.get('status') == 'Success' %}selected{% endif %}>Success</option>
+                <option value="Failed" {% if request.args.get('status') == 'Failed' %}selected{% endif %}>Failed</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>From Date</label>
+            <input type="date" name="date_from" class="form-control" value="{{ request.args.get('date_from', '') }}">
+        </div>
+        <div class="form-group">
+            <label>To Date</label>
+            <input type="date" name="date_to" class="form-control" value="{{ request.args.get('date_to', '') }}">
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="btn">Filter</button>
+        </div>
+    </form>
+</div>
+
+<!-- Recent Activity -->
+{% if recent_logs %}
+<div class="widget-grid">
+    {% for log in recent_logs[:4] %}
+    <div class="widget-card">
+        <div class="d-flex justify-between align-center mb-2">
+            <h4>{{ log.action }}</h4>
+            {% if log.severity == 'Critical' %}
+            <span class="badge badge-danger">Critical</span>
+            {% elif log.severity == 'Warning' %}
+            <span class="badge badge-warning">Warning</span>
+            {% else %}
+            <span class="badge badge-info">Info</span>
+            {% endif %}
+        </div>
+        <p class="widget-caption">
+            <strong>{{ log.full_name or log.user or 'System' }}</strong>
+            {% if log.module %} · {{ log.module }}{% endif %}
+        </p>
+        <p class="widget-caption">{{ log.description or 'No description' }}</p>
+        <p class="widget-caption mt-2">🕐 {{ log.created_at.strftime('%Y-%m-%d %H:%M') if log.created_at else '' }}</p>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Logs Table -->
+<div class="table-card">
+    <div class="card-header">
+        <h3>📋 Audit Log Entries</h3>
+        <span class="badge badge-primary">{{ logs|length }} Entries</span>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Module</th>
+                    <th>Severity</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>
+                        <strong>
+                            {%- if log.user_id|string == session.get('admin_id')|string -%}
+                                {{ log.full_name or log.user or 'System' }}
+                            {%- elif log.full_name -%}
+                                {{ log.full_name[:1] }}. {{ log.full_name.split(' ')[-1][:1] }}. (redacted)
+                            {%- else -%}
+                                System
+                            {%- endif -%}
+                        </strong>
+                        {% if log.username %}<br><small class="text-muted">@{{ log.username }}</small>{% endif %}
+                    </td>
+                    <td>
+                        <strong>{{ log.action }}</strong>
+                        {% if log.description %}<br><small class="text-muted">{{ log.description[:80] }}</small>{% endif %}
+                    </td>
+                    <td>{{ log.module or '-' }}</td>
+                    <td>
+                        {% if log.severity == 'Critical' %}
+                        <span class="badge badge-danger">Critical</span>
+                        {% elif log.severity == 'Warning' %}
+                        <span class="badge badge-warning">Warning</span>
+                        {% else %}
+                        <span class="badge badge-info">Info</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if log.status == 'Success' %}
+                        <span class="badge badge-success">Success</span>
+                        {% else %}
+                        <span class="badge badge-danger">Failed</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M') if log.created_at else '-' }}</td>
+                    <td>
+                        <a class="btn btn-sm btn-danger" href="{{ url_for('logs.delete_log', id=log.id) }}" onclick="return confirm('Delete this log entry?')">🗑️</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center">No audit log entries found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

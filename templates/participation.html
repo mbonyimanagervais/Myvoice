@@ -1,0 +1,67 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Voter Participation | MyVoice{% endblock %}
+
+{% block admin_content %}
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Imported Student Roster</span>
+        <h1>Voter Participation</h1>
+        <p>Track which students have submitted a ballot.</p>
+    </div>
+    <a class="btn btn-secondary" href="{{ url_for('admin_home') }}">Back to Dashboard</a>
+</div>
+
+<div class="d-flex gap-2 mb-4" role="tablist" aria-label="Participation filters">
+    <a class="btn {% if status_filter == 'all' %}btn-primary{% else %}btn-outline{% endif %}" href="{{ url_for('participation.participation_page', status='all') }}">All Students ({{ counts.all }})</a>
+    <a class="btn {% if status_filter == 'voted' %}btn-primary{% else %}btn-outline{% endif %}" href="{{ url_for('participation.participation_page', status='voted') }}">Voted ({{ counts.voted }})</a>
+    <a class="btn {% if status_filter == 'not-voted' %}btn-primary{% else %}btn-outline{% endif %}" href="{{ url_for('participation.participation_page', status='not-voted') }}">Not Voted ({{ counts.not_voted }})</a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div>
+            <h3>Student Voting Status</h3>
+            <span class="card-subtitle">Columns match the imported student roster.</span>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            {% if status_filter == 'voted' %}
+            <a class="btn btn-secondary btn-sm" href="{{ url_for('participation.export_participation_csv', status='voted') }}">Download Voted</a>
+            {% elif status_filter == 'not-voted' %}
+            <a class="btn btn-secondary btn-sm" href="{{ url_for('participation.export_participation_csv', status='not-voted') }}">Download Not Voted</a>
+            {% endif %}
+            <span class="badge badge-primary">{{ rows|length }} Records</span>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Student ID</th>
+                    <th>Name</th>
+                    <th>Voting Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td><strong>{{ row.student_id }}</strong></td>
+                    <td>{{ row.name }}</td>
+                    <td>
+                        {% if row.status == 'Voted' %}
+                        <span class="badge badge-success">Voted</span>
+                        {% else %}
+                        <span class="badge badge-neutral">Not Voted</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="3" class="text-center">No students match this filter.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

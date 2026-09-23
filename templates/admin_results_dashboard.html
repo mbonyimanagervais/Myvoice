@@ -1,0 +1,386 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Election Results | MyVoice{% endblock %}
+
+{% block admin_content %}
+<style>
+    .admin-results {
+        --ar-bg: #071429;
+        --ar-panel: #0d203c;
+        --ar-panel-2: #11294a;
+        --ar-border: rgba(117, 165, 226, .24);
+        --ar-text: #edf6ff;
+        --ar-muted: #9ab4d5;
+        --ar-blue: #299cf2;
+        --ar-cyan: #55dcff;
+        --ar-green: #53dfa1;
+        --ar-gold: #f5c953;
+        --ar-purple: #a16bff;
+        color: var(--ar-text);
+        margin: -24px -24px 0;
+        padding: 24px;
+        min-height: calc(100vh - 80px);
+        background:
+            radial-gradient(circle at 12% 0, rgba(35, 128, 255, .16), transparent 28%),
+            linear-gradient(180deg, #071429 0%, #091b34 100%);
+    }
+
+    .ar-header, .ar-actions, .ar-toolbar, .ar-stat-grid, .ar-main-grid,
+    .ar-bottom-grid, .ar-winner, .ar-runner-grid, .ar-analysis-grid,
+    .ar-performance-row, .ar-feed-row {
+        display: flex;
+    }
+
+    .ar-header {
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 18px;
+        margin: 0 auto 22px;
+        max-width: 1420px;
+        flex-wrap: wrap;
+    }
+
+    .ar-kicker {
+        color: var(--ar-cyan);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: .18em;
+        text-transform: uppercase;
+    }
+
+    .ar-header h1 {
+        margin: 9px 0 5px;
+        color: var(--ar-text);
+        font-size: clamp(30px, 3vw, 46px);
+        letter-spacing: -.055em;
+        line-height: 1;
+    }
+
+    .ar-header p { margin: 0; color: var(--ar-muted); font-size: 13px; }
+    .ar-actions { align-items: center; gap: 10px; flex-wrap: wrap; }
+
+    .ar-select, .ar-button, .ar-back {
+        min-height: 42px;
+        border-radius: 10px;
+        border: 1px solid var(--ar-border);
+        font: inherit;
+        font-weight: 700;
+    }
+
+    .ar-select {
+        appearance: none;
+        min-width: 210px;
+        padding: 0 38px 0 13px;
+        color: var(--ar-text);
+        background-color: #0b1e39;
+        background-image: linear-gradient(45deg, transparent 50%, var(--ar-cyan) 50%), linear-gradient(135deg, var(--ar-cyan) 50%, transparent 50%);
+        background-position: calc(100% - 18px) 18px, calc(100% - 12px) 18px;
+        background-size: 6px 6px;
+        background-repeat: no-repeat;
+    }
+
+    .ar-button, .ar-back {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 15px;
+        color: var(--ar-text);
+        background: rgba(71, 126, 203, .16);
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .ar-button.primary { background: linear-gradient(135deg, #168af0, #38baf5); border-color: transparent; color: white; }
+    .ar-button.green { background: rgba(83, 223, 161, .13); color: var(--ar-green); border-color: rgba(83, 223, 161, .3); }
+    .ar-status { color: var(--ar-green); font-size: 12px; font-weight: 800; }
+
+    .ar-visibility {
+        max-width: 1420px;
+        margin: 0 auto 18px;
+        padding: 16px 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        flex-wrap: wrap;
+        border: 1px solid {% if allow_voter_results %}rgba(83, 223, 161, .42){% else %}rgba(255, 133, 133, .38){% endif %};
+        border-radius: 15px;
+        background: {% if allow_voter_results %}linear-gradient(135deg, rgba(21, 87, 75, .72), rgba(11, 39, 58, .92)){% else %}linear-gradient(135deg, rgba(91, 39, 56, .72), rgba(33, 28, 52, .92)){% endif %};
+        box-shadow: 0 15px 38px rgba(0, 0, 0, .22);
+    }
+
+    .ar-visibility-copy { display: flex; align-items: center; gap: 13px; }
+    .ar-visibility-icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 11px; background: rgba(255,255,255,.1); font-size: 19px; }
+    .ar-visibility-copy h2 { margin: 0 0 4px; color: var(--ar-text); font-size: 15px; }
+    .ar-visibility-copy p { margin: 0; color: var(--ar-muted); font-size: 11px; }
+    .ar-visibility-state { color: {% if allow_voter_results %}var(--ar-green){% else %}#ff9cae{% endif %}; font-size: 12px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+    .ar-visibility-form { display: flex; align-items: center; gap: 11px; }
+    .ar-visibility-form label { color: var(--ar-muted); font-size: 11px; font-weight: 800; }
+    .ar-toggle { position: relative; width: 66px; height: 34px; display: inline-block; }
+    .ar-toggle input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    .ar-toggle-track { position: absolute; inset: 0; border: 1px solid rgba(255,255,255,.2); border-radius: 999px; background: #57243a; cursor: pointer; transition: .2s ease; }
+    .ar-toggle-track:before { content: ""; position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 3px 9px rgba(0,0,0,.3); transition: .2s ease; }
+    .ar-toggle input:checked + .ar-toggle-track { background: #168b69; }
+    .ar-toggle input:checked + .ar-toggle-track:before { transform: translateX(32px); }
+    .ar-toggle input:focus-visible + .ar-toggle-track { outline: 2px solid var(--ar-cyan); outline-offset: 3px; }
+
+    .ar-stat-grid {
+        max-width: 1420px;
+        margin: 0 auto 18px;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .ar-stat {
+        position: relative;
+        flex: 1 1 150px;
+        min-width: 145px;
+        padding: 15px 16px;
+        overflow: hidden;
+        background: linear-gradient(180deg, rgba(17, 42, 74, .96), rgba(11, 29, 53, .98));
+        border: 1px solid var(--ar-border);
+        border-radius: 13px;
+        box-shadow: 0 14px 35px rgba(0, 0, 0, .22);
+    }
+
+    .ar-stat:before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--ar-blue), var(--ar-cyan)); }
+    .ar-label { color: var(--ar-muted); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; font-weight: 800; }
+    .ar-value { display: block; margin-top: 9px; color: var(--ar-text); font-size: 25px; font-weight: 900; letter-spacing: -.045em; }
+    .ar-detail { display: block; margin-top: 3px; color: var(--ar-muted); font-size: 11px; }
+
+    .ar-main-grid, .ar-bottom-grid { max-width: 1420px; margin: 0 auto; gap: 14px; flex-wrap: wrap; }
+    .ar-card { background: linear-gradient(180deg, rgba(16, 39, 69, .97), rgba(9, 25, 47, .98)); border: 1px solid var(--ar-border); border-radius: 15px; box-shadow: 0 18px 45px rgba(0, 0, 0, .27); overflow: hidden; }
+    .ar-card-body { padding: 17px; }
+    .ar-leader-card { flex: 1.4 1 500px; }
+    .ar-side-card { flex: 1 1 290px; }
+    .ar-wide-card { flex: 1 1 100%; }
+    .ar-card-title { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .ar-card-title h2, .ar-card-title h3 { margin: 0; color: var(--ar-text); font-size: 14px; letter-spacing: .04em; }
+    .ar-card-title h2 { font-size: 16px; }
+    .ar-chip { padding: 5px 9px; border-radius: 999px; color: var(--ar-green); background: rgba(83, 223, 161, .1); border: 1px solid rgba(83, 223, 161, .26); font-size: 10px; font-weight: 800; text-transform: uppercase; }
+
+    .ar-winner { align-items: center; gap: 16px; padding: 13px; background: linear-gradient(135deg, rgba(27, 74, 117, .75), rgba(14, 34, 60, .85)); border: 1px solid rgba(83, 194, 255, .23); border-radius: 13px; }
+    .ar-photo { width: 116px; height: 126px; flex: 0 0 auto; border-radius: 12px; overflow: hidden; background: #17385e; border: 1px solid rgba(145, 201, 255, .3); }
+    .ar-photo img { width: 100%; height: 100%; object-fit: cover; }
+    .ar-photo-fallback { width: 100%; height: 100%; display: grid; place-items: center; color: #dff3ff; font-size: 45px; font-weight: 900; background: linear-gradient(135deg, #15528c, #1e78be); }
+    .ar-winner-copy { min-width: 0; }
+    .ar-winner-copy small { color: var(--ar-cyan); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .13em; }
+    .ar-winner-copy h2 { margin: 7px 0 4px; color: var(--ar-text); font-size: clamp(20px, 2vw, 29px); letter-spacing: -.04em; }
+    .ar-percent { display: block; color: white; font-size: 38px; font-weight: 900; letter-spacing: -.06em; }
+    .ar-votes { color: var(--ar-muted); font-size: 12px; font-weight: 700; }
+    .ar-meter { height: 9px; margin-top: 11px; overflow: hidden; border-radius: 999px; background: rgba(150, 187, 228, .17); }
+    .ar-meter span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--ar-blue), var(--ar-cyan)); }
+
+    .ar-runner-grid { gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+    .ar-runner { display: flex; align-items: center; gap: 9px; flex: 1 1 145px; min-width: 0; padding: 9px; background: rgba(12, 31, 55, .75); border: 1px solid rgba(120, 165, 222, .18); border-radius: 10px; }
+    .ar-runner .ar-photo { width: 45px; height: 50px; border-radius: 8px; }
+    .ar-runner .ar-photo-fallback { font-size: 20px; }
+    .ar-runner-copy { min-width: 0; flex: 1; }
+    .ar-runner-copy strong { display: block; overflow: hidden; color: var(--ar-text); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+    .ar-runner-copy span { color: var(--ar-cyan); font-size: 17px; font-weight: 900; }
+    .ar-rank { color: var(--ar-gold); font-size: 12px; font-weight: 900; }
+
+    .ar-analysis-grid { align-items: center; gap: 20px; }
+    .ar-ring { --ring: 0%; position: relative; width: 145px; height: 145px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; background: conic-gradient(var(--ar-cyan) 0 var(--ring), rgba(68, 128, 196, .18) var(--ring) 100%); box-shadow: 0 0 25px rgba(68, 202, 255, .15); }
+    .ar-ring:after { content: ""; position: absolute; inset: 22px; border-radius: 50%; background: #0c2341; border: 1px solid rgba(141, 191, 255, .2); }
+    .ar-ring-center { position: relative; z-index: 1; text-align: center; }
+    .ar-ring-center strong { display: block; color: var(--ar-text); font-size: 26px; }
+    .ar-ring-center span { color: var(--ar-muted); font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .ar-legend { display: grid; gap: 10px; flex: 1; }
+    .ar-legend-row { display: flex; justify-content: space-between; gap: 16px; color: var(--ar-muted); font-size: 11px; }
+    .ar-legend-row strong { color: var(--ar-text); }
+    .ar-dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--ar-cyan); }
+    .ar-dot.green { background: var(--ar-green); }
+    .ar-dot.gold { background: var(--ar-gold); }
+
+    .ar-pyramid { display: grid; gap: 5px; margin: 8px auto 0; max-width: 245px; }
+    .ar-pyramid-row { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 31px; padding: 0 8px; border: 1px solid rgba(139, 189, 255, .22); color: var(--ar-text); font-size: 10px; font-weight: 800; }
+    .ar-pyramid-row:nth-child(1) { width: 38%; margin: auto; background: rgba(43, 157, 255, .7); }
+    .ar-pyramid-row:nth-child(2) { width: 58%; margin: auto; background: rgba(66, 194, 163, .65); }
+    .ar-pyramid-row:nth-child(3) { width: 78%; margin: auto; background: rgba(143, 91, 219, .68); }
+    .ar-pyramid-row:nth-child(4) { width: 98%; margin: auto; background: rgba(105, 142, 197, .62); }
+    .ar-pyramid-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .ar-performance { display: grid; gap: 8px; }
+    .ar-performance-row { align-items: center; gap: 9px; min-height: 35px; padding: 4px 7px; border-bottom: 1px solid rgba(131, 170, 220, .13); }
+    .ar-performance-row:last-child { border-bottom: 0; }
+    .ar-performance-rank { width: 22px; color: var(--ar-muted); font-size: 10px; font-weight: 800; }
+    .ar-performance-name { width: 150px; overflow: hidden; color: var(--ar-text); font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+    .ar-performance-bar { height: 8px; flex: 1; overflow: hidden; border-radius: 999px; background: rgba(130, 173, 224, .15); }
+    .ar-performance-bar span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--ar-blue), var(--ar-cyan)); }
+    .ar-performance-value { width: 65px; color: var(--ar-muted); font-size: 10px; text-align: right; }
+
+    .ar-controls { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .ar-controls p { margin: 0; color: var(--ar-muted); font-size: 11px; }
+    .ar-switch-form { display: flex; align-items: center; gap: 9px; }
+    .ar-switch-form label { color: var(--ar-text); font-size: 11px; font-weight: 800; }
+    .ar-switch-form input { accent-color: var(--ar-green); }
+
+    .ar-empty { max-width: 1420px; margin: 0 auto; padding: 55px 20px; border: 1px solid var(--ar-border); border-radius: 15px; color: var(--ar-muted); text-align: center; background: rgba(10, 29, 53, .8); }
+    .ar-empty h2 { margin: 0 0 8px; color: var(--ar-text); }
+
+    @media (max-width: 760px) {
+        .ar-results { margin: -16px -12px 0; padding: 16px 12px; }
+        .ar-winner { align-items: flex-start; flex-direction: column; }
+        .ar-photo { width: 100%; max-width: 190px; height: 170px; }
+        .ar-performance-name { width: 100px; }
+    }
+</style>
+
+<div class="admin-results">
+    <header class="ar-header">
+        <div>
+            <span class="ar-kicker">Official Results Dashboard</span>
+            <h1>{{ (elections | selectattr('id', 'equalto', selected_election_id) | map(attribute='title') | first) or 'Election Results' }}</h1>
+            <p>Live database results for the selected category and every position within it.</p>
+        </div>
+        <div class="ar-actions">
+            <form method="get" action="{{ url_for('reports.results_page') }}">
+                <select class="ar-select" name="election_id" onchange="this.form.submit()" aria-label="Select election">
+                    {% for election in elections %}
+                    <option value="{{ election.id }}" {% if election.id == selected_election_id %}selected{% endif %}>{{ election.title }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+            <a class="ar-back" href="{{ url_for('admin_home') }}">Back</a>
+        </div>
+    </header>
+
+    <section class="ar-visibility" aria-labelledby="results-visibility-title">
+        <div class="ar-visibility-copy">
+            <div class="ar-visibility-icon">{% if allow_voter_results %}🔓{% else %}🔒{% endif %}</div>
+            <div>
+                <h2 id="results-visibility-title">Results Visibility Control</h2>
+                <p>Allow or close access to published election results for all voters.</p>
+            </div>
+        </div>
+        <form class="ar-visibility-form" method="post" action="{{ url_for('update_voter_results_visibility') }}">
+            <span class="ar-visibility-state">{% if allow_voter_results %}OPEN{% else %}CLOSED{% endif %}</span>
+            <label for="results-visibility-toggle">{% if allow_voter_results %}Close results{% else %}Open results{% endif %}</label>
+            <label class="ar-toggle" for="results-visibility-toggle">
+                <input id="results-visibility-toggle" type="checkbox" name="allow_voter_results" onchange="this.form.submit()" {% if allow_voter_results %}checked{% endif %}>
+                <span class="ar-toggle-track"></span>
+            </label>
+        </form>
+    </section>
+
+    {% if selected_category %}
+    <div class="ar-actions" style="max-width:1420px;margin:0 auto 14px;">
+        <form method="get" action="{{ url_for('reports.results_page') }}">
+            <input type="hidden" name="election_id" value="{{ selected_election_id }}">
+            <select class="ar-select" name="category_id" onchange="this.form.submit()" aria-label="Select result category">
+                {% for category in category_results %}
+                <option value="{{ category.category_id }}" {% if category.category_id == selected_category.category_id %}selected{% endif %}>{{ category.category_name }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        {% if selected_category.positions %}
+        <form method="get" action="{{ url_for('reports.results_page') }}">
+            <input type="hidden" name="election_id" value="{{ selected_election_id }}">
+            <input type="hidden" name="category_id" value="{{ selected_category.category_id }}">
+            <select class="ar-select" name="position_id" onchange="this.form.submit()" aria-label="Select position">
+                {% for position in selected_category.positions %}
+                <option value="{{ position.position_id }}" {% if selected_position and position.position_id == selected_position.position_id %}selected{% endif %}>{{ position.position_name }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        {% endif %}
+        <span class="ar-status">{{ selected_category.category_name }} | {{ selected_category.total_votes }} counted votes</span>
+    </div>
+
+    <div class="ar-stat-grid">
+        <div class="ar-stat"><span class="ar-label">Registered Voters</span><span class="ar-value">{{ stats.participation.registered_students }}</span><span class="ar-detail">Eligible students</span></div>
+        <div class="ar-stat"><span class="ar-label">Votes Cast</span><span class="ar-value">{{ stats.participation.students_voted }}</span><span class="ar-detail">Recorded ballots</span></div>
+        <div class="ar-stat"><span class="ar-label">Valid Votes</span><span class="ar-value">{{ selected_category.total_votes }}</span><span class="ar-detail">Current category</span></div>
+        <div class="ar-stat"><span class="ar-label">Participation</span><span class="ar-value">{{ stats.participation.participation_rate }}%</span><span class="ar-detail">Turnout rate</span></div>
+        <div class="ar-stat"><span class="ar-label">Positions</span><span class="ar-value">{{ selected_category.positions|length }}</span><span class="ar-detail">In this category</span></div>
+    </div>
+
+    {% set lead_position = selected_position %}
+    {% set lead_candidates = lead_position.candidates if lead_position else [] %}
+    {% set leader = lead_candidates[0] if lead_candidates else none %}
+    {% set runners = lead_candidates[1:4] if lead_candidates|length > 1 else [] %}
+    {% set turnout = stats.participation.participation_rate or 0 %}
+
+    {% if leader %}
+    <div class="ar-main-grid">
+        <section class="ar-card ar-leader-card">
+            <div class="ar-card-body">
+                <div class="ar-card-title"><h2>Currently Leading | {{ lead_position.position_name }}</h2><span class="ar-chip">Winner</span></div>
+                <div class="ar-winner">
+                    <div class="ar-photo">
+                        {% if leader.candidate_photo %}<img src="/uploads/candidates/{{ leader.candidate_photo }}" alt="{{ leader.candidate_name }}">{% else %}<div class="ar-photo-fallback">{{ leader.candidate_name[:1]|upper }}</div>{% endif %}
+                    </div>
+                    <div class="ar-winner-copy">
+                        <small>Rank #{{ leader.rank }}</small>
+                        <h2>{{ leader.candidate_name }}</h2>
+                        <span class="ar-percent">{{ leader.percentage }}%</span>
+                        <span class="ar-votes">{{ leader.votes }} votes received</span>
+                        <div class="ar-meter"><span style="width:{{ leader.percentage }}%;"></span></div>
+                    </div>
+                </div>
+                <div class="ar-runner-grid">
+                    {% for candidate in runners %}
+                    <div class="ar-runner">
+                        <div class="ar-photo">{% if candidate.candidate_photo %}<img src="/uploads/candidates/{{ candidate.candidate_photo }}" alt="{{ candidate.candidate_name }}">{% else %}<div class="ar-photo-fallback">{{ candidate.candidate_name[:1]|upper }}</div>{% endif %}</div>
+                        <div class="ar-runner-copy"><strong>{{ candidate.candidate_name }}</strong><span>{{ candidate.percentage }}%</span></div><span class="ar-rank">#{{ candidate.rank }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="ar-card ar-side-card">
+            <div class="ar-card-body">
+                <div class="ar-card-title"><h2>MyVoice Vote Ring</h2><span class="ar-chip">Live data</span></div>
+                <div class="ar-analysis-grid">
+                    <div class="ar-ring" style="--ring:{{ turnout }}%;"><div class="ar-ring-center"><strong>{{ turnout }}%</strong><span>counted</span></div></div>
+                    <div class="ar-legend">
+                        <div class="ar-legend-row"><span><i class="ar-dot green"></i>Votes cast</span><strong>{{ stats.participation.students_voted }}</strong></div>
+                        <div class="ar-legend-row"><span><i class="ar-dot"></i>Registered</span><strong>{{ stats.participation.registered_students }}</strong></div>
+                        <div class="ar-legend-row"><span><i class="ar-dot gold"></i>Remaining</span><strong>{{ stats.participation.students_remaining }}</strong></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="ar-card ar-side-card">
+            <div class="ar-card-body">
+                <div class="ar-card-title"><h2>Vote Pyramid</h2><span class="ar-chip">Ranked</span></div>
+                <div class="ar-pyramid">
+                    {% for candidate in lead_candidates[:4] %}<div class="ar-pyramid-row"><b>#{{ candidate.rank }}</b><span>{{ candidate.candidate_name }}</span><strong>{{ candidate.percentage }}%</strong></div>{% endfor %}
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="ar-bottom-grid" style="margin-top:14px;">
+        <section class="ar-card ar-wide-card">
+            <div class="ar-card-body">
+                <div class="ar-card-title"><h2>Candidate Performance | {{ lead_position.position_name }}</h2><span class="ar-chip">{{ lead_position.total_votes }} votes</span></div>
+                <div class="ar-performance">
+                    {% for candidate in lead_candidates %}
+                    <div class="ar-performance-row"><span class="ar-performance-rank">#{{ candidate.rank }}</span><span class="ar-performance-name">{{ candidate.candidate_name }}</span><div class="ar-performance-bar"><span style="width:{{ candidate.percentage }}%;"></span></div><span class="ar-performance-value">{{ candidate.votes }} votes | {{ candidate.percentage }}%</span></div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="ar-card ar-wide-card">
+            <div class="ar-card-body">
+                <div class="ar-card-title"><h2>Admin Controls</h2><span class="ar-status">Broadcast {% if allow_voter_results %}ON{% else %}OFF{% endif %}</span></div>
+                <div class="ar-controls">
+                    <p>Uses the existing global Results Broadcast permission for voters.</p>
+                    <a class="ar-button" href="{{ url_for('reports.export_results') }}">Export CSV</a>
+                </div>
+            </div>
+        </section>
+    </div>
+    {% else %}
+    <div class="ar-empty"><h2>No result positions available</h2><p>The selected election has no positions or candidates to display yet.</p></div>
+    {% endif %}
+    {% else %}
+    <div class="ar-empty"><h2>No elections available</h2><p>Create an election and add candidates before opening the Results dashboard.</p></div>
+    {% endif %}
+</div>
+{% endblock %}

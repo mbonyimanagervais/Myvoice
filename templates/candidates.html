@@ -1,0 +1,720 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Candidate Management | MyVoice{% endblock %}
+
+{% block admin_content %}
+<!-- Page Header -->
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Candidate Administration</span>
+        <h1>Candidate Management</h1>
+        <p>Register and manage election candidates with professional workflow automation.</p>
+    </div>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <a class="btn btn-secondary" href="{{ url_for('admin_home') }}">← Back to Dashboard</a>
+        <button class="btn btn-danger" onclick="confirmDeleteAll()">🗑️ Delete All Data</button>
+    </div>
+</div>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert {% if category == 'error' %}alert-danger{% elif category == 'danger' %}alert-danger{% elif category == 'success' %}alert-success{% elif category == 'warning' %}alert-warning{% else %}alert-info{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<!-- Statistics Cards -->
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-label">Total Candidates</div>
+        <div class="stat-value" id="stat-total">0</div>
+    </div>
+    <div class="stat-card stat-success">
+        <div class="stat-label">Published</div>
+        <div class="stat-value" id="stat-published">0</div>
+    </div>
+    <div class="stat-card stat-info">
+        <div class="stat-label">Draft</div>
+        <div class="stat-value" id="stat-draft">0</div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-label">Disabled</div>
+        <div class="stat-value" id="stat-disabled">0</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Archived</div>
+        <div class="stat-value" id="stat-archived">0</div>
+    </div>
+</div>
+
+<!-- Professional Candidate Registration -->
+<div class="card">
+    <div class="card-header">
+        <h3>➕ Professional Candidate Registration</h3>
+    </div>
+    
+    <form id="candidateForm" method="POST" enctype="multipart/form-data" action="{{ url_for('candidates.add_candidate') }}">
+        <!-- Step 1: Select Election -->
+        <div class="form-group">
+            <label>1. Select Election <span class="required">*</span></label>
+            <select name="election_id" id="electionSelect" class="form-control" required onchange="loadPositions()">
+                <option value="">-- Choose Election --</option>
+                {% for election in elections or [] %}
+                <option value="{{ election.id }}">{{ election.title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Step 2: Select Position -->
+        <div class="form-group">
+            <label>2. Select Position <span class="required">*</span></label>
+            <select name="position_id" id="positionSelect" class="form-control" required disabled onchange="loadStudents()">
+                <option value="">-- Select Election First --</option>
+            </select>
+        </div>
+
+        <!-- Step 3: Search Student -->
+        <div class="form-group">
+            <label>3. Search Student <span class="required">*</span></label>
+            <input type="text" id="studentSearch" class="form-control" placeholder="Search by name, ID, class, or department..." 
+                   oninput="searchStudents()" autocomplete="off" disabled>
+            <div id="studentResults" class="search-results"></div>
+            <input type="hidden" name="student_id" id="selectedStudentId" required>
+        </div>
+
+        <!-- Student Profile Card (Auto-populated) -->
+        <div id="studentProfileCard" class="profile-card" style="display: none;">
+            <div class="profile-card-header">
+                <div class="profile-photo" id="profilePhoto">👤</div>
+                <div class="profile-info">
+                    <h4 id="profileName">Student Name</h4>
+                    <p id="profileStudentId">Student ID: --</p>
+                    <p id="profileClass">Class: --</p>
+                    <p id="profileDepartment">Department: --</p>
+                    <span class="badge badge-success" id="profileStatus">Eligible</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: Candidate Information -->
+        <div id="candidateInfoSection">
+            <div class="alert alert-info">
+                <strong>ℹ️ Instructions:</strong> Complete the steps above (Select Election, Position, and Search Student) then fill in the candidate details below.
+            </div>
+            
+            <!-- Photo Upload Section -->
+            <div class="form-group">
+                <label>📸 Candidate Photo</label>
+                <div class="photo-upload-container">
+                    <div class="photo-preview" id="photoPreview">
+                        <div class="photo-placeholder">
+                            <span>👤</span>
+                            <p>No photo selected</p>
+                        </div>
+                    </div>
+                    <div class="photo-upload-controls">
+                        <input type="file" name="photo" id="photoInput" class="form-control" accept="image/png, image/jpeg, image/jpg" onchange="previewPhoto(event)">
+                        <div class="photo-hint">
+                            <small>✅ Accepted formats: JPG, JPEG, PNG</small><br>
+                            <small>✅ Recommended: Square image, max 2MB</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Campaign Slogan</label>
+                    <input name="slogan" class="form-control" maxlength="100" placeholder="Your Voice, Your Future">
+                </div>
+                <div class="form-group">
+                    <label>Display Order</label>
+                    <input type="number" name="display_order" class="form-control" value="0" min="0" placeholder="0">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Biography</label>
+                    <textarea name="biography" class="form-control" maxlength="500" placeholder="Brief candidate biography (max 500 characters)"></textarea>
+                    <div class="char-count"><span id="bioCount">0</span>/500</div>
+                </div>
+                <div class="form-group">
+                    <label>Manifesto</label>
+                    <textarea name="manifesto" class="form-control" maxlength="2000" placeholder="Campaign manifesto and goals (max 2000 characters)"></textarea>
+                    <div class="char-count"><span id="manifestoCount">0</span>/2000</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Publication Status</label>
+                <select name="status" class="form-control">
+                    <option value="Draft">📝 Draft - Save for later</option>
+                    <option value="Published">✅ Published - Visible to voters</option>
+                    <option value="Disabled">🚫 Disabled - Temporarily hidden</option>
+                    <option value="Archived">📦 Archived - Historical record</option>
+                </select>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-success btn-lg" type="submit">✨ Create Candidate</button>
+                <button type="reset" class="btn btn-secondary" onclick="resetForm()">🔄 Reset Form</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Search & Filters -->
+<div class="card">
+    <div class="card-header">
+        <h3>🔍 Search & Filter Candidates</h3>
+    </div>
+    <form method="GET" class="filter-form">
+        <div class="form-group">
+            <label>Search</label>
+            <input type="text" name="search" class="form-control" placeholder="Search by name, ID..." value="{{ request.args.get('search','') }}">
+        </div>
+        <div class="form-group">
+            <label>Election</label>
+            <select name="election_filter" class="form-control">
+                <option value="">All Elections</option>
+                {% for election in elections or [] %}
+                <option value="{{ election.id }}" {% if request.args.get('election_filter') == election.id|string %}selected{% endif %}>{{ election.title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Status</label>
+            <select name="status_filter" class="form-control">
+                <option value="">All Status</option>
+                <option value="Published" {% if request.args.get('status_filter') == 'Published' %}selected{% endif %}>Published</option>
+                <option value="Draft" {% if request.args.get('status_filter') == 'Draft' %}selected{% endif %}>Draft</option>
+                <option value="Disabled" {% if request.args.get('status_filter') == 'Disabled' %}selected{% endif %}>Disabled</option>
+                <option value="Archived" {% if request.args.get('status_filter') == 'Archived' %}selected{% endif %}>Archived</option>
+            </select>
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="btn">Filter</button>
+            <a href="{{ url_for('candidates.candidates_page') }}" class="btn btn-secondary">Reset</a>
+        </div>
+    </form>
+</div>
+
+<!-- Candidate Gallery -->
+<div class="table-card">
+    <div class="card-header">
+        <h3>📋 Registered Candidates</h3>
+        <span class="badge badge-primary">{{ candidates|length }} Candidates</span>
+    </div>
+
+    {% if candidates %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Photo</th>
+                    <th>Name</th>
+                    <th>Student ID</th>
+                    <th>Department</th>
+                    <th>Position</th>
+                    <th>Election</th>
+                    <th>Status</th>
+                    <th>Date Added</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for candidate in candidates %}
+                <tr>
+                    <td>
+                        {% if candidate.photo %}
+                        <img src="/uploads/candidates/{{ candidate.photo }}" width="50" height="50" style="border-radius: 50%; object-fit: cover;">
+                        {% else %}
+                        <div class="candidate-photo-fallback" style="width: 44px; height: 44px; font-size: 16px;">{{ (candidate.full_name or candidate.name)[:1]|upper }}</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <strong>{{ candidate.full_name or candidate.name }}</strong><br>
+                        <small class="text-muted">{{ candidate.slogan or 'No slogan' }}</small>
+                    </td>
+                    <td>{{ candidate.student.student_id if candidate.student else '—' }}</td>
+                    <td>{{ candidate.student.department if candidate.student else '—' }}</td>
+                    <td>{{ candidate.position.name if candidate.position else '—' }}</td>
+                    <td>{{ candidate.election.title if candidate.election else '—' }}</td>
+                    <td>
+                        {% if candidate.status == 'Published' %}
+                        <span class="badge badge-success">Published</span>
+                        {% elif candidate.status == 'Draft' %}
+                        <span class="badge badge-neutral">Draft</span>
+                        {% elif candidate.status == 'Disabled' %}
+                        <span class="badge badge-danger">Disabled</span>
+                        {% elif candidate.status == 'Archived' %}
+                        <span class="badge badge-warning">Archived</span>
+                        {% else %}
+                        <span class="badge badge-neutral">{{ candidate.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if candidate.created_at %}
+                        {{ candidate.created_at.strftime('%Y-%m-%d') }}
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="actions-cell">
+                            {% if candidate.status != 'Published' %}
+                            <a href="{{ url_for('candidates.publish_candidate', id=candidate.id) }}" class="btn btn-sm btn-success" title="Publish">✓ Publish</a>
+                            {% endif %}
+                            {% if candidate.status != 'Disabled' %}
+                            <a href="{{ url_for('candidates.disable_candidate', id=candidate.id) }}" class="btn btn-sm btn-warning" title="Disable">🚫 Disable</a>
+                            {% endif %}
+                            {% if candidate.status != 'Archived' %}
+                            <a href="{{ url_for('candidates.archive_candidate', id=candidate.id) }}" class="btn btn-sm btn-secondary" title="Archive">📦 Archive</a>
+                            {% endif %}
+                            <a href="{{ url_for('candidates.delete_candidate', id=candidate.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Delete this candidate?')" title="Delete">🗑️</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">👤</div>
+        <h3>No Candidates Yet</h3>
+        <p>No candidates have been added yet. Use the form above to register your first candidate.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Hidden form for delete all -->
+<form id="deleteAllForm" method="POST" action="{{ url_for('candidates.delete_all_candidates') }}" style="display: none;">
+    <input type="hidden" name="confirm" value="yes">
+</form>
+
+<script>
+// Load statistics on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadStatistics();
+});
+
+// Load candidate statistics
+function loadStatistics() {
+    fetch('{{ url_for("candidates.candidate_statistics") }}')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('stat-total').textContent = data.total;
+            document.getElementById('stat-published').textContent = data.published;
+            document.getElementById('stat-draft').textContent = data.draft;
+            document.getElementById('stat-disabled').textContent = data.disabled;
+            document.getElementById('stat-archived').textContent = data.archived;
+        })
+        .catch(error => console.error('Error loading statistics:', error));
+}
+
+// Load positions based on selected election
+function loadPositions() {
+    const electionId = document.getElementById('electionSelect').value;
+    const positionSelect = document.getElementById('positionSelect');
+    const studentSearch = document.getElementById('studentSearch');
+    
+    if (!electionId) {
+        positionSelect.disabled = true;
+        positionSelect.innerHTML = '<option value="">-- Select Election First --</option>';
+        studentSearch.disabled = true;
+        return;
+    }
+    
+    // Fetch positions for selected election
+    fetch(`/api/candidates/positions/${electionId}`)
+        .then(response => response.json())
+        .then(data => {
+            positionSelect.innerHTML = '<option value="">-- Choose Position --</option>';
+            data.positions.forEach(position => {
+                positionSelect.innerHTML += `<option value="${position.id}">${position.name}</option>`;
+            });
+            positionSelect.disabled = false;
+        })
+        .catch(error => {
+            console.error('Error loading positions:', error);
+            positionSelect.innerHTML = '<option value="">-- Error Loading Positions --</option>';
+        });
+}
+
+// Load students when position is selected
+function loadStudents() {
+    const positionId = document.getElementById('positionSelect').value;
+    const studentSearch = document.getElementById('studentSearch');
+    
+    if (!positionId) {
+        studentSearch.disabled = true;
+        studentSearch.value = '';
+        document.getElementById('studentResults').innerHTML = '';
+        document.getElementById('studentProfileCard').style.display = 'none';
+        return;
+    }
+    
+    studentSearch.disabled = false;
+    studentSearch.focus();
+}
+
+// Search students
+function searchStudents() {
+    const query = document.getElementById('studentSearch').value;
+    const electionId = document.getElementById('electionSelect').value;
+    const resultsDiv = document.getElementById('studentResults');
+    
+    if (query.length < 2) {
+        resultsDiv.innerHTML = '';
+        return;
+    }
+    
+    fetch(`/api/candidates/search-students?q=${encodeURIComponent(query)}&election_id=${electionId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.students.length === 0) {
+                resultsDiv.innerHTML = '<div class="search-result-item">No students found</div>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = data.students.map(student => `
+                <div class="search-result-item" onclick="selectStudent(${student.id}, '${student.full_name.replace(/'/g, "\\'")}', '${student.student_id}', '${student.class_name || ''}', '${student.department || ''}')">
+                    <strong>${student.full_name}</strong>
+                    <small>${student.student_id} | ${student.class_name || 'N/A'} | ${student.department || 'N/A'}</small>
+                </div>
+            `).join('');
+        })
+        .catch(error => {
+            console.error('Error searching students:', error);
+            resultsDiv.innerHTML = '<div class="search-result-item">Error searching students</div>';
+        });
+}
+
+// Select student and show profile
+function selectStudent(studentId, fullName, studentIdCode, className, department) {
+    document.getElementById('selectedStudentId').value = studentId;
+    document.getElementById('studentSearch').value = fullName;
+    document.getElementById('studentResults').innerHTML = '';
+    
+    // Show profile card
+    document.getElementById('profileName').textContent = fullName;
+    document.getElementById('profileStudentId').textContent = `Student ID: ${studentIdCode}`;
+    document.getElementById('profileClass').textContent = `Class: ${className || 'N/A'}`;
+    document.getElementById('profileDepartment').textContent = `Department: ${department || 'N/A'}`;
+    document.getElementById('studentProfileCard').style.display = 'block';
+    
+    // Show candidate info section
+    document.getElementById('candidateInfoSection').style.display = 'block';
+    
+    // Scroll to candidate info section
+    document.getElementById('candidateInfoSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Preview photo before upload
+function previewPhoto(event) {
+    const file = event.target.files[0];
+    const previewDiv = document.getElementById('photoPreview');
+    
+    if (file) {
+        // Validate file type
+        if (!file.type.match('image.*')) {
+            alert('Please select a valid image file');
+            event.target.value = '';
+            return;
+        }
+        
+        // Validate file size (2MB max)
+        if (file.size > 2 * 1024 * 1024) {
+            alert('Image size must be less than 2MB');
+            event.target.value = '';
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            previewDiv.innerHTML = `<img src="${e.target.result}" alt="Preview" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+// Reset form
+function resetForm() {
+    document.getElementById('photoPreview').innerHTML = `
+        <div class="photo-placeholder">
+            <span>👤</span>
+            <p>No photo selected</p>
+        </div>
+    `;
+    document.getElementById('photoInput').value = '';
+}
+
+// Character counters
+document.addEventListener('DOMContentLoaded', function() {
+    const bioTextarea = document.querySelector('textarea[name="biography"]');
+    const manifestoTextarea = document.querySelector('textarea[name="manifesto"]');
+    
+    if (bioTextarea) {
+        bioTextarea.addEventListener('input', function() {
+            document.getElementById('bioCount').textContent = this.value.length;
+        });
+    }
+    
+    if (manifestoTextarea) {
+        manifestoTextarea.addEventListener('input', function() {
+            document.getElementById('manifestoCount').textContent = this.value.length;
+        });
+    }
+});
+
+// Confirm delete all candidates
+function confirmDeleteAll() {
+    if (confirm('⚠️ WARNING: This will permanently delete ALL candidates from the system. This action cannot be undone. Are you absolutely sure?')) {
+        if (confirm('This is your last warning. Delete ALL candidates?')) {
+            document.getElementById('deleteAllForm').submit();
+        }
+    }
+}
+</script>
+
+<style>
+/* Candidate Management Specific Styles */
+.required {
+    color: var(--danger-color);
+    font-weight: bold;
+}
+
+.search-results {
+    position: absolute;
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+    margin-top: 4px;
+    width: 100%;
+}
+
+.search-result-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    transition: background var(--transition-fast);
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-item:hover {
+    background: var(--surface-hover);
+}
+
+.search-result-item strong {
+    display: block;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.search-result-item small {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.profile-card {
+    background: linear-gradient(135deg, var(--surface-alt) 0%, var(--surface) 100%);
+    border: 2px solid var(--primary-color);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin: 20px 0;
+    box-shadow: var(--shadow-md);
+}
+
+.profile-card-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.profile-photo {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.profile-info h4 {
+    margin: 0 0 8px 0;
+    font-size: 20px;
+    color: var(--text-primary);
+}
+
+.profile-info p {
+    margin: 4px 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.candidate-photo-fallback {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.form-group {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+/* Photo Upload Styles */
+.photo-upload-container {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 24px;
+    align-items: start;
+    padding: 20px;
+    background: var(--surface-alt);
+    border-radius: var(--radius-lg);
+    border: 2px dashed var(--border-color);
+}
+
+.photo-preview {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-md);
+    border: 4px solid var(--surface);
+}
+
+.photo-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.photo-placeholder {
+    text-align: center;
+    color: white;
+}
+
+.photo-placeholder span {
+    font-size: 64px;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.photo-placeholder p {
+    color: white;
+    font-size: 13px;
+    margin: 0;
+    font-weight: 500;
+}
+
+.photo-upload-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.photo-hint {
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.char-count {
+    text-align: right;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    padding: 20px 0;
+    border-top: 1px solid var(--border-color);
+    margin-top: 20px;
+}
+
+.btn-lg {
+    padding: 14px 28px;
+    font-size: 16px;
+    border-radius: var(--radius-lg);
+}
+
+@media (max-width: 768px) {
+    .photo-upload-container {
+        grid-template-columns: 1fr;
+        justify-items: center;
+    }
+    
+    .photo-preview {
+        width: 150px;
+        height: 150px;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .btn-lg {
+        width: 100%;
+    }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+}
+
+.empty-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.actions-cell {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.text-muted {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+</style>
+{% endblock %}

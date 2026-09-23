@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Election Results | MyVoice</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 24px; background: #f7f9fc; }
+        .card { background: white; padding: 16px; border-radius: 10px; margin-bottom: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th, td { border-bottom: 1px solid #e5e7eb; padding: 10px; text-align: left; }
+        .btn { display: inline-block; padding: 8px 12px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px; margin-right: 6px; }
+        .btn.secondary { background: #6b7280; }
+        .pill { display: inline-block; padding: 4px 8px; background: #dcfce7; color: #166534; border-radius: 999px; font-size: 12px; }
+        .winner { font-weight: bold; color: #2563eb; }
+    </style>
+</head>
+<body>
+    <h1>Election Results</h1>
+    <div class="card">
+        <form method="get" action="{{ url_for('reports.results_page') }}">
+            <label for="election_id">Select Election</label>
+            <select id="election_id" name="election_id" onchange="this.form.submit()">
+                <option value="">All Elections</option>
+                {% for election in elections %}
+                    <option value="{{ election.id }}" {% if selected_election_id == election.id %}selected{% endif %}>{{ election.title }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+    <div class="grid">
+        <div class="card"><h3>Total Votes</h3><p>{{ stats.total_votes }}</p></div>
+        <div class="card"><h3>Positions</h3><p>{{ stats.total_positions }}</p></div>
+        <div class="card"><h3>Candidates</h3><p>{{ stats.total_candidates }}</p></div>
+        <div class="card"><h3>Participation</h3><p>{{ stats.participation.participation_rate }}%</p></div>
+    </div>
+    <div class="card">
+        <h3>Participation Summary</h3>
+        <p>Registered: {{ stats.participation.registered_students }} | Voted: {{ stats.participation.students_voted }} | Remaining: {{ stats.participation.students_remaining }}</p>
+    </div>
+    <div class="card">
+        <h3>Publication Controls</h3>
+        {% if selected_election_id %}
+            {% set current_election = elections | selectattr('id', 'equalto', selected_election_id) | first %}
+            {% if current_election %}
+                {% if current_election.show_live_results %}
+                    <form method="post" action="{{ url_for('reports.unpublish_results_route', election_id=current_election.id) }}" style="display:inline;">
+                        <button class="btn secondary" type="submit">Hide Results</button>
+                    </form>
+                {% else %}
+                    <form method="post" action="{{ url_for('reports.publish_results_route', election_id=current_election.id) }}" style="display:inline;">
+                        <button class="btn" type="submit">Publish Results</button>
+                    </form>
+                {% endif %}
+            {% endif %}
+        {% endif %}
+        <a class="btn secondary" href="{{ url_for('reports.export_results') }}">Export CSV</a>
+    </div>
+    {% for result in results %}
+    <div class="card">
+        <h3>{{ result.position_name }}</h3>
+        <p><strong>Election:</strong> {{ result.election_title }} | <strong>Total Votes:</strong> {{ result.total_votes }}</p>
+        <table>
+            <thead>
+                <tr><th>Rank</th><th>Candidate</th><th>Votes</th><th>Percentage</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+                {% for candidate in result.candidates %}
+                <tr>
+                    <td>{{ candidate.rank }}</td>
+                    <td class="{% if loop.first %}winner{% endif %}">{{ candidate.candidate_name }}</td>
+                    <td>{{ candidate.votes }}</td>
+                    <td>{{ candidate.percentage }}%</td>
+                    <td>{% if loop.first %}<span class="pill">Winner</span>{% else %}Candidate{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endfor %}
+</body>
+</html>

@@ -1,0 +1,73 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Notifications | MyVoice{% endblock %}
+
+{% block admin_content %}
+<!-- Page Header -->
+<div class="page-header">
+    <div>
+        <span class="eyebrow">Communication Center</span>
+        <h1>🔔 System Notifications</h1>
+        <p>Publish and manage live announcements for voters and administrators.</p>
+    </div>
+    <a class="btn btn-secondary" href="{{ url_for('admin_home') }}">← Back to Dashboard</a>
+</div>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert {% if category == 'error' %}alert-danger{% elif category == 'danger' %}alert-danger{% elif category == 'success' %}alert-success{% elif category == 'warning' %}alert-warning{% else %}alert-info{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<!-- Create Notification -->
+<div class="card">
+    <div class="card-header">
+        <h3>➕ Create Notification</h3>
+        <span class="card-subtitle">Announce important updates to all users</span>
+    </div>
+    <form method="POST" action="{{ url_for('notifications.add_notification') }}">
+        <div class="form-group">
+            <label>Notification Message</label>
+            <textarea name="message" class="form-control" placeholder="Write your notification message..." required></textarea>
+            <div class="hint">This message will be visible to all voters and administrators.</div>
+        </div>
+        <button class="btn btn-success" type="submit">📤 Send Notification</button>
+    </form>
+</div>
+
+<!-- Notification List -->
+<div class="card">
+    <div class="card-header">
+        <h3>📋 Notification History</h3>
+        <span class="badge badge-primary">{{ notifications|length }} Notifications</span>
+    </div>
+
+    {% if notifications %}
+    <div class="d-flex flex-column gap-2">
+        {% for notification in notifications %}
+        <div class="d-flex justify-between align-center" style="padding: 14px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--surface-alt);">
+            <div class="d-flex align-center gap-3" style="min-width: 0;">
+                <span style="font-size: 20px;">📢</span>
+                <div>
+                    <p style="margin: 0; font-weight: 600; color: var(--text-primary);">{{ notification.message }}</p>
+                    <small class="text-muted">{{ notification.created_at.strftime('%Y-%m-%d %H:%M') if notification.created_at else 'Just now' }}</small>
+                </div>
+            </div>
+            <a class="btn btn-sm btn-danger" href="{{ url_for('notifications.delete_notification', id=notification.id) }}" onclick="return confirm('Delete this notification?')">🗑️ Delete</a>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">🔕</div>
+        <h3>No Notifications</h3>
+        <p>No notifications have been created yet. Use the form above to publish the first announcement.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

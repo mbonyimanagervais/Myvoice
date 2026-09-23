@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}{% if system_settings and system_settings.system_name %}{{ system_settings.system_name }}{% else %}MyVoice Voting System{% endif %} | Student Login{% endblock %}
+
+{% block body_class %}auth-page{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+    <div class="auth-logo">
+        <div class="logo-icon">
+            {% if system_settings and system_settings.school_logo %}
+            <img src="{{ url_for('static', filename='uploads/' + system_settings.school_logo) }}" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; padding: 8px; border-radius: var(--radius-lg);">
+            {% else %}
+            MV
+            {% endif %}
+        </div>
+        <h1>{% if system_settings and system_settings.system_name %}{{ system_settings.system_name }}{% else %}MyVoice{% endif %}</h1>
+        <p>{% if system_settings and system_settings.school_name %}{{ system_settings.school_name }}{% else %}Student Voting Portal{% endif %}</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert {% if category == 'error' or category == 'danger' %}alert-danger{% elif category == 'success' %}alert-success{% else %}alert-info{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" class="auth-form" id="voterLoginForm" action="{{ url_for('auth.voter_login') }}" autocomplete="off" novalidate>
+        <div class="form-group">
+            <label for="voter-student-id">Voter / Student ID</label>
+            <input type="text"
+                   id="voter-student-id"
+                   name="voter_student_id"
+                   class="form-control"
+                   placeholder="Enter your Student ID"
+                   value=""
+                   autocomplete="off"
+                   data-form-type="other"
+                   data-lpignore="true"
+                   data-1p-ignore="true"
+                   autocapitalize="off"
+                   autocorrect="off"
+                   spellcheck="false"
+                   autofocus>
+        </div>
+
+        <div class="form-group">
+            <label for="voter-password">Password</label>
+            <div class="input-group password-toggle">
+                <input type="password"
+                       id="voter-password"
+                       name="voter_password"
+                       class="form-control"
+                       placeholder="Enter your password"
+                       value=""
+                       autocomplete="new-password"
+                       data-form-type="other"
+                       data-lpignore="true"
+                       data-1p-ignore="true"
+                       autocapitalize="off"
+                       autocorrect="off"
+                       spellcheck="false">
+                <button type="button" class="toggle-password" data-target="voter-password" title="Show / Hide password" aria-label="Show or hide password">👁️</button>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-lg btn-block" id="voterLoginBtn">
+            <span class="btn-label"><span>🗳️</span> Sign In to Vote</span>
+            <span class="btn-loading" style="display:none;">⏳ Signing in…</span>
+        </button>
+    </form>
+
+    <a class="auth-forgot" href="{{ url_for('auth.voter_forgot_password') }}" style="display:block; text-align:center; margin-top:18px; font-size:14px; font-weight:600;">Forgot Password?</a>
+
+    <a class="auth-back" href="{{ url_for('index') }}" style="margin-top:14px; display:block; text-align:center;">← Back to Home</a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Show / Hide password toggle
+    document.querySelectorAll('.toggle-password').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var input = document.getElementById(btn.dataset.target);
+            input.type = input.type === 'password' ? 'text' : 'password';
+        });
+    });
+
+    // Clear any pre-existing values on page load (covers bfcache restore)
+    window.addEventListener('pageshow', function (event) {
+        if (event.persisted) {
+            var studentEl = document.getElementById('voter-student-id');
+            var passwordEl = document.getElementById('voter-password');
+            if (studentEl) studentEl.value = '';
+            if (passwordEl) passwordEl.value = '';
+        }
+    });
+
+    // Loading state (prevents double submit)
+    document.getElementById('voterLoginForm').addEventListener('submit', function () {
+        var b = document.getElementById('voterLoginBtn');
+        b.disabled = true;
+        b.querySelector('.btn-label').style.display = 'none';
+        b.querySelector('.btn-loading').style.display = 'inline';
+    });
+</script>
+{% endblock %}

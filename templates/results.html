@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>
+Election Results | MyVoice
+</title>
+
+
+<link rel="stylesheet"
+href="{{ url_for('static', filename='css/dashboard.css') }}">
+
+
+</head>
+
+
+<body>
+
+
+<h1>
+Live Election Results
+</h1>
+
+
+
+<table>
+
+
+<tr>
+
+<th>Election</th>
+
+<th>Position</th>
+
+<th>Candidate</th>
+
+<th>Votes</th>
+
+
+</tr>
+
+
+
+{% for result in results %}
+
+
+<tr>
+
+
+<td>
+{{ result.election }}
+</td>
+
+
+<td>
+{{ result.position }}
+</td>
+
+
+<td>
+{{ result.candidate }}
+</td>
+
+
+<td>
+{{ result.votes }}
+</td>
+
+
+</tr>
+
+
+
+{% endfor %}
+
+
+
+</table>
+
+
+
+
+</body>
+
+</html>

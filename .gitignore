@@ -1,0 +1,104 @@
+# Secrets and local environment files
+.env
+.env.*
+!.env.example
+
+# Local databases and database backups
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-shm
+*.db-wal
+database.db
+backups/
+
+# Runtime and user-uploaded data
+uploads/
+static/uploads/
+
+# Python caches and test tooling
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local development environments and editor metadata
+.venv/
+venv/
+env/
+.vscode/
+
+# Logs and generated local output
+*.log
+*.out
+*.tmp
+*.temp
+*.swp
+check_output.txt
+rec_out.txt
+*_out.txt
+
+# Local inspection and smoke-test text artifacts
+_*[0-9].txt
+_a*.txt
+_app_*.txt
+_auth_*.txt
+_check*.txt
+_db_*.txt
+_dump_*.txt
+_final_*.txt
+_fresh_*.txt
+_mig_*.txt
+_pos_*.txt
+_pytest.txt
+_run_*.txt
+_schema_*.txt
+_sec_*.txt
+_smoke*.txt
+_t*.txt
+_templates.txt
+_test_*.txt
+_unit*.txt
+_verify_*.txt
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Local inspection, migration, smoke-test, and draft files
+/_test_check.py
+/_test_recovery.py
+/_test_reset.py
+/_inspect_schema.py
+/_dump.py
+/_organize_homepage_images.py
+/_run_migration.py
+/_smoke_mt.py
+/_verify_compile.py
+/check_db.py
+/check_results.py
+/check_sound.py
+/rewrite_template.py
+/run_tests.py
+/temp_check.py
+/temp_verify.py
+/verify_tests.py
+/test_debug_update.py
+/test_full_flow.py
+/test_full_flow2.py
+/test_login.py
+/test_settings_update.py
+/tests/test_app.py.new
+/modules/logs.py.new
+/templates/candidates.html.new
+/templates/elections.html.new
+/templates/positions.html.new
+/templates/voting.html.new
+
+# Root-level draft and backup files
+/*.new
+/*.bak

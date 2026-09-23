@@ -1,0 +1,290 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}System Settings | MyVoice{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/settings-recovery.css') }}">
+{% endblock %}
+
+{% block admin_content %}
+<!-- Page Header -->
+<div class="page-header">
+    <div>
+        <span class="eyebrow">System Configuration</span>
+        <h1>⚙️ System Settings</h1>
+        <p>Configure the MyVoice system identity, branding, themes, and election defaults.</p>
+    </div>
+    <a class="btn btn-secondary" href="{{ url_for('admin_home') }}">← Back to Dashboard</a>
+</div>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert {% if category == 'error' %}alert-danger{% elif category == 'danger' %}alert-danger{% elif category == 'success' %}alert-success{% elif category == 'warning' %}alert-warning{% else %}alert-info{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<form method="POST" enctype="multipart/form-data">
+    <!-- System Identity -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>🏫 System Identity</h3>
+            <span class="card-subtitle">Basic information shown across the platform</span>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>System Name</label>
+                <input type="text" name="system_name" class="form-control" value="{{ settings.system_name or '' }}" required>
+            </div>
+            <div class="form-group">
+                <label>School Name</label>
+                <input type="text" name="school_name" class="form-control" value="{{ settings.school_name or '' }}" required>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>School Motto</label>
+                <input type="text" name="school_motto" class="form-control" value="{{ settings.school_motto or '' }}">
+            </div>
+            <div class="form-group">
+                <label>Footer Text</label>
+                <input type="text" name="footer_text" class="form-control" value="{{ settings.footer_text or '' }}">
+            </div>
+        </div>
+    </div>
+
+    <!-- Images & Branding -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>🖼️ Images & Branding</h3>
+            <span class="card-subtitle">Upload logos and backgrounds for different pages</span>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>School Logo</label>
+                <input type="file" name="school_logo" class="form-control" accept="image/png,image/jpeg" onchange="previewImage(event,'logoPreview')">
+                <img id="logoPreview" class="preview" style="width: 80px; height: 80px; object-fit: contain; margin-top: 8px; border-radius: var(--radius-md); border: 1px solid var(--border-color); padding: 4px;" src="{% if settings.school_logo %}{{ url_for('static', filename='uploads/' + settings.school_logo) }}{% endif %}">
+            </div>
+            <div class="form-group">
+                <label>Home Background</label>
+                <input type="file" name="home_image" class="form-control" accept="image/png,image/jpeg" onchange="previewImage(event,'homePreview')">
+                <img id="homePreview" class="preview" style="width: 120px; height: 70px; object-fit: cover; margin-top: 8px; border-radius: var(--radius-md); border: 1px solid var(--border-color);" src="{% if settings.home_image %}{{ url_for('static', filename='uploads/' + settings.home_image) }}{% endif %}">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Admin Login Background</label>
+                <input type="file" name="admin_image" class="form-control" accept="image/png,image/jpeg" onchange="previewImage(event,'adminPreview')">
+                <img id="adminPreview" class="preview" style="width: 120px; height: 70px; object-fit: cover; margin-top: 8px; border-radius: var(--radius-md); border: 1px solid var(--border-color);" src="{% if settings.admin_image %}{{ url_for('static', filename='uploads/' + settings.admin_image) }}{% endif %}">
+            </div>
+            <div class="form-group">
+                <label>Voter Login Background</label>
+                <input type="file" name="voter_image" class="form-control" accept="image/png,image/jpeg" onchange="previewImage(event,'voterPreview')">
+                <img id="voterPreview" class="preview" style="width: 120px; height: 70px; object-fit: cover; margin-top: 8px; border-radius: var(--radius-md); border: 1px solid var(--border-color);" src="{% if settings.voter_image %}{{ url_for('static', filename='uploads/' + settings.voter_image) }}{% endif %}">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Dashboard Background</label>
+            <input type="file" name="dashboard_image" class="form-control" accept="image/png,image/jpeg" onchange="previewImage(event,'dashboardPreview')">
+            <img id="dashboardPreview" class="preview" style="width: 120px; height: 70px; object-fit: cover; margin-top: 8px; border-radius: var(--radius-md); border: 1px solid var(--border-color);" src="{% if settings.dashboard_image %}{{ url_for('static', filename='uploads/' + settings.dashboard_image) }}{% endif %}">
+        </div>
+    </div>
+
+    <!-- Theme & Colors -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>🎨 Theme Management</h3>
+            <span class="card-subtitle">Customize the look and feel of your system</span>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Theme</label>
+                <select name="theme" class="form-control">
+                    <option value="Light" {% if settings.theme == "Light" %}selected{% endif %}>☀️ Light</option>
+                    <option value="Dark" {% if settings.theme == "Dark" %}selected{% endif %}>🌙 Dark</option>
+                    <option value="Blue" {% if settings.theme == "Blue" %}selected{% endif %}>🔵 Blue</option>
+                    <option value="School" {% if settings.theme == "School" %}selected{% endif %}>🎓 School Theme</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Primary Color</label>
+                <input type="-color" name="primary_color" class="form-control" value="{{ settings.primary_color or '#0066ff' }}" style="height: 46px; padding: 4px;">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Secondary Color</label>
+                <input type="color" name="secondary_color" class="form-control" value="{{ settings.secondary_color or '#222222' }}" style="height: 46px; padding: 4px;">
+            </div>
+            <div class="form-group">
+                <label>Accent Color</label>
+                <input type="color" name="accent_color" class="form-control" value="{{ settings.accent_color or '#00ff99' }}" style="height: 46px; padding: 4px;">
+            </div>
+        </div>
+    </div>
+
+    <!-- Election Configuration -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>🗳️ Election Configuration</h3>
+            <span class="card-subtitle">Default settings for new elections</span>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Election Year</label>
+                <input type="number" name="election_year" class="form-control" value="{{ settings.election_year or '' }}">
+            </div>
+            <div class="form-group">
+                <label>Default Student Password</label>
+                <input type="text" name="default_student_password" class="form-control" value="{{ settings.default_student_password or '' }}">
+                <div class="hint">Default password assigned to new student accounts</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="card">
+        <div class="d-flex gap-2 flex-wrap">
+            <button type="submit" class="btn btn-success btn-lg">💾 Save Settings</button>
+            <a href="/admin/settings/reset" class="btn btn-warning btn-lg" onclick="return confirm('Reset all settings to defaults?')">🔄 Reset Settings</a>
+            <a href="/admin/dashboard" class="btn btn-secondary btn-lg">← Back To Dashboard</a>
+        </div>
+    </div>
+</form>
+
+<!-- =====================================
+     DEVELOPER EMERGENCY RECOVERY
+     ===================================== -->
+<div class="card mt-5">
+    <div class="card-header">
+        <h3>🛡️ Developer Emergency Recovery</h3>
+        <span class="card-subtitle">Authorized developer-assisted administrator account recovery</span>
+    </div>
+
+    <div class="recovery-section">
+        <!-- Hero summary -->
+        <div class="recovery-hero">
+            <div class="recovery-hero-icon">🛡️</div>
+            <div class="recovery-hero-body">
+                <h3>Administrator Account Recovery</h3>
+                <p>
+                    A secure, developer-assisted recovery mechanism that lets an authorized administrator
+                    regain access when the normal password is lost — without creating a permanent hidden
+                    backdoor. The recovery credential is generated automatically, delivered to the developer's
+                    security email, and stored only as a cryptographic hash.
+                </p>
+            </div>
+            <div class="recovery-hero-badge">
+                {% if recovery_status.configured %}
+                    <span class="status-dot configured"></span> Configured
+                {% else %}
+                    <span class="status-dot not-configured"></span> Not Configured
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Configuration detail grid -->
+        <div class="recovery-grid">
+            <div class="recovery-detail">
+                <div class="recovery-detail-label">🔐 Status</div>
+                <div class="recovery-detail-value">
+                    {% if recovery_status.configured %}
+                        <span class="badge badge-success">Active &amp; Secure</span>
+                    {% else %}
+                        <span class="badge badge-warning">Not Configured</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="recovery-detail">
+                <div class="recovery-detail-label">🧑‍💻 Authorized Developer</div>
+                <div class="recovery-detail-value mono">{{ recovery_status.email or '—' }}</div>
+            </div>
+            <div class="recovery-detail">
+                <div class="recovery-detail-label">🔑 Recovery Credential</div>
+                <div>
+                    {% if recovery_status.configured %}
+                        <span class="credential-mask"><span class="lock">🔒</span>••••••••••••••••</span>
+                    {% else %}
+                        <span class="text-muted">Not generated</span>
+                    {% endif %}
+                </div>
+                <div class="hint mt-2">Only a hash is stored; the value is never shown to administrators.</div>
+            </div>
+            <div class="recovery-detail">
+                <div class="recovery-detail-label">📅 Last Recovery</div>
+                <div class="recovery-detail-value">
+                    {{ recovery_status.last_at.strftime('%d %b %Y, %H:%M') if recovery_status.last_at else '—' }}
+                </div>
+            </div>
+            <div class="recovery-detail">
+                <div class="recovery-detail-label">🧾 Recovery Events</div>
+                <div class="recovery-detail-value">{{ recovery_status.events }}</div>
+            </div>
+        </div>
+
+
+
+        <!-- Actions -->
+        <div class="recovery-actions">
+            {% if recovery_status.configured %}
+                <form method="POST" action="{{ url_for('settings.rotate_developer_recovery') }}"
+                      onsubmit="return confirm('Rotate the Developer Recovery Credential? The current credential will be permanently invalidated.')">
+                    <button type="submit" class="btn btn-warning">🔄 Rotate Recovery Credential</button>
+                </form>
+                <a class="btn btn-secondary" href="{{ url_for('auth.admin_forgot_password') }}">🔎 How Recovery Works</a>
+{% else %}
+                <form method="POST" action="{{ url_for('settings.init_developer_recovery') }}"
+                      onsubmit="return confirm('Generate the Developer Emergency Recovery credential now? It will be delivered securely and stored only as a hash.')">
+                    <button type="submit" class="btn btn-success">🚀 Initialize Developer Recovery</button>
+                </form>
+                <a class="btn btn-secondary" href="{{ url_for('auth.admin_forgot_password') }}">🔎 How Recovery Works</a>
+            {% endif %}
+<a class="btn btn-secondary" href="{{ url_for('auth.admin_recovery_requests') }}">📋 View Recovery Requests</a>
+        </div>
+
+        <!-- Security note : NOT a backdoor -->
+        <div class="recovery-security-note warn">
+            <div class="recovery-security-note-icon">⚠️</div>
+            <div class="recovery-security-note-body">
+                <strong>Important — Developer Recovery is NOT a backdoor</strong>
+                <p>
+                    The recovery credential does not directly open the administrator dashboard. It only authorizes an
+                    emergency password reset, after which existing sessions are revoked and normal administrator login
+                    is required. Never share the credential publicly, and always keep it confidential.
+                </p>
+            </div>
+        </div>
+
+        <div class="recovery-security-note info">
+            <div class="recovery-security-note-icon">🔒</div>
+            <div class="recovery-security-note-body">
+                <strong>Security &amp; Accountability</strong>
+                <p>
+                    Every recovery operation (generation, delivery, success, failure, lockout, and password reset) is
+                    recorded in the Audit Log. The credential is generated with a cryptographically secure random
+                    generator, hashed with PBKDF2, and never stored, displayed, logged, or exposed through frontend code.
+                </p>
+            </div>
+        </div>
+
+        <!-- How it works -->
+        <div class="card-header" style="margin-top: 12px;">
+            <h3>🔄 Emergency Recovery Workflow</h3>
+        </div>
+        <div class="recovery-workflow">
+            <div class="recovery-step" data-step="1"><h4>Forgot Password</h4><p>Administrator cannot sign in and contacts the authorized developer.</p></div>
+            <div class="recovery-step" data-step="2"><h4>Developer Verifies</h4><p>Developer confirms the administrator's identity/authorization.</p></div>
+            <div class="recovery-step" data-step="3"><h4>Credential Entry</h4><p>Administrator enters the recovery credential supplied by the developer.</p></div>
+            <div class="recovery-step" data-step="4"><h4>Verification</h4><p>System verifies the credential hash and authorizes a temporary reset.</p></div>
+            <div class="recovery-step" data-step="5"><h4>New Password</h4><p>Administrator sets a new strong password; old sessions are revoked.</p></div>
+            <div class="recovery-step" data-step="6"><h4>Audited &amp; Notified</h4><p>The event is logged, and the developer is notified. Normal login resumes.</p></div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}

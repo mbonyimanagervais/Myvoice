@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MyVoice - Secure, transparent and professional digital voting platform.">
+    <title>MyVoice — Secure Digital Voting Platform</title>
+
+    <!-- Google Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <!-- Homepage CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+</head>
+<body>
+
+<!-- =========================================================
+     HERO BACKGROUND
+========================================================= -->
+
+<div class="hero-background" id="heroBackground">
+    <div class="hero-overlay"></div>
+    <div class="hero-noise"></div>
+</div>
+
+<!-- =========================================================
+     NAVIGATION
+========================================================= -->
+
+<header class="site-header">
+    <div class="nav-container">
+        <a href="{{ url_for('index') }}" class="brand">
+            <div class="brand-mark"><i class="fa-solid fa-check-to-slot"></i></div>
+            <div class="brand-text">
+                <div class="brand-name">My<span>Voice</span></div>
+                <div class="brand-tagline">Secure Elections. Brighter Futures.</div>
+                <div class="school-identity">FR RAMON KABUGA TSS &bull; Electronic Voting Platform</div>
+            </div>
+        </a>
+
+        <nav class="main-nav">
+            <a href="#home" class="nav-link active">Home</a>
+            <a href="#about" class="nav-link">About</a>
+            <a href="#how-it-works" class="nav-link">How It Works</a>
+            <a href="#benefits" class="nav-link">Benefits</a>
+            <a href="#contact" class="nav-link">Contact</a>
+        </nav>
+
+        <div class="nav-actions">
+            <button class="language-button" type="button">
+                <i class="fa-solid fa-globe"></i><span>English</span><i class="fa-solid fa-chevron-down"></i>
+            </button>
+            <a href="#contact" class="help-button"><i class="fa-solid fa-headset"></i> Help</a>
+        </div>
+
+        <button class="mobile-menu-button" id="mobileMenuButton" type="button" aria-label="Open navigation">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+    </div>
+    <div class="mobile-navigation" id="mobileNavigation">
+        <a href="#home">Home</a>
+        <a href="#about">About</a>
+        <a href="#how-it-works">How It Works</a>
+        <a href="#benefits">Benefits</a>
+        <a href="#contact">Contact</a>
+    </div>
+</header>
+
+<!-- =========================================================
+     MAIN
+========================================================= -->
+
+<main id="home">
+
+<!-- HERO SECTION -->
+<section class="hero-section">
+    <div class="hero-container">
+        <!-- LEFT CONTENT -->
+        <div class="hero-content">
+            <div class="hero-eyebrow">
+                <span class="eyebrow-line"></span>
+                <span>A MODERN DIGITAL VOTING PLATFORM</span>
+            </div>
+
+            <h1 class="hero-title">
+                <span>Your Voice</span>
+                <span class="accent-text">Shapes</span>
+                <span>a Better</span>
+                <span>Tomorrow</span>
+            </h1>
+
+            <p class="hero-description">
+                MyVoice empowers schools, organizations and communities to conduct secure, transparent and efficient elections.
+                <strong>Simple for voters. Powerful for administrators.</strong> Built for trust.
+            </p>
+
+            <div class="hero-features">
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                    <div class="feature-text"><strong>Secure</strong><span>Your election data is protected</span></div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="fa-solid fa-chart-column"></i></div>
+                    <div class="feature-text"><strong>Transparent</strong><span>Fair and accountable elections</span></div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="fa-solid fa-users"></i></div>
+                    <div class="feature-text"><strong>Inclusive</strong><span>Everyone can participate</span></div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="fa-solid fa-gear"></i></div>
+                    <div class="feature-text"><strong>Easy to Use</strong><span>Simple and efficient</span></div>
+                </div>
+            </div>
+
+            <div class="every-vote">
+                <span>Every Vote Matters.</span>
+                <div class="vote-underline"></div>
+            </div>
+
+            <div class="hero-stats">
+                <div class="stat"><strong>100+</strong><span>Organizations</span></div>
+                <div class="stat-divider"></div>
+                <div class="stat"><strong>50K+</strong><span>Voters</span></div>
+                <div class="stat-divider"></div>
+                <div class="stat"><strong>200+</strong><span>Elections</span></div>
+                <div class="stat-divider"></div>
+                <div class="stat"><strong>99.9%</strong><span>Reliability</span></div>
+            </div>
+        </div>
+
+        <!-- RIGHT SIDE -->
+        <div class="access-area">
+            <article class="access-card admin-card">
+                <div class="access-icon admin-icon"><i class="fa-solid fa-user-tie"></i></div>
+                <div class="access-label">ADMIN</div>
+                <h2>Manage Elections</h2>
+                <p>Manage your organization, elections, voters, candidates, reports and settings.</p>
+                <a href="{{ url_for('auth.admin_login') }}" class="access-button admin-button">
+                    <span>Access Admin</span><i class="fa-solid fa-arrow-right"></i>
+                </a>
+            </article>
+
+            <article class="access-card voter-card">
+                <div class="access-icon voter-icon"><i class="fa-solid fa-check-to-slot"></i></div>
+                <div class="access-label">VOTER</div>
+                <h2>Cast Your Vote</h2>
+                <p>Enter your voter credentials and securely make your voice heard.</p>
+                <a href="{{ url_for('auth.voter_login') }}" class="access-button voter-button">
+                    <span>Go to Voting</span><i class="fa-solid fa-arrow-right"></i>
+                </a>
+            </article>
+        </div>
+    </div>
+
+    <a href="#about" class="scroll-indicator">
+        <span class="mouse-icon"><span></span></span>
+        <span>Scroll to explore</span>
+        <i class="fa-solid fa-chevron-down"></i>
+    </a>
+</section>
+
+<!-- ABOUT -->
+<section class="content-section" id="about">
+    <div class="section-container">
+        <span class="section-label">ABOUT MYVOICE</span>
+        <h2>Technology that gives <span>every voice a place.</span></h2>
+        <p>MyVoice provides FR RAMON KABUGA TSS with a secure, transparent and efficient digital voting experience.</p>
+    </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="content-section light-section" id="how-it-works">
+    <div class="section-container">
+        <span class="section-label">HOW IT WORKS</span>
+        <h2>From setup to results, <span>made simple.</span></h2>
+        <div class="process-grid">
+            <div class="process-card"><span>01</span><h3>Organization Setup</h3><p>Create and configure your organization.</p></div>
+            <div class="process-card"><span>02</span><h3>Election Setup</h3><p>Create positions, candidates and election rules.</p></div>
+            <div class="process-card"><span>03</span><h3>Secure Voting</h3><p>Voters authenticate and cast their ballots.</p></div>
+            <div class="process-card"><span>04</span><h3>Results</h3><p>Analyze election results and generate reports.</p></div>
+        </div>
+    </div>
+</section>
+
+<!-- BENEFITS -->
+<section class="content-section" id="benefits">
+    <div class="section-container">
+        <span class="section-label">WHY MYVOICE</span>
+        <h2>Built for <span>better elections.</span></h2>
+        <div class="benefit-grid">
+            <div class="benefit-card"><i class="fa-solid fa-lock"></i><h3>Secure</h3><p>Professional authentication, authorization and protected election data.</p></div>
+            <div class="benefit-card"><i class="fa-solid fa-bolt"></i><h3>Efficient</h3><p>Reduce manual work and simplify election administration.</p></div>
+            <div class="benefit-card"><i class="fa-solid fa-globe"></i><h3>Scalable</h3><p>Designed to support multiple organizations on one platform.</p></div>
+            <div class="benefit-card"><i class="fa-solid fa-chart-pie"></i><h3>Insightful</h3><p>Reports and analytics help administrators understand election activity.</p></div>
+        </div>
+    </div>
+</section>
+
+<!-- CONTACT -->
+<section class="contact-section" id="contact">
+    <div class="contact-container">
+        <div class="contact-content">
+            <span class="section-label">QUICK ACCESS</span>
+            <h2>Get started with <span>MyVoice</span></h2>
+            <p>Choose your access portal to begin. Administrators manage elections, voters cast their ballots.</p>
+        </div>
+        <div class="contact-links">
+            <a href="{{ url_for('auth.admin_login') }}" class="contact-item"><i class="fa-solid fa-user-tie"></i><div><small>Admin</small><strong>Sign in to contact</strong></div></a>
+            <a href="{{ url_for('auth.voter_login') }}" class="contact-item"><i class="fa-solid fa-check-to-slot"></i><div><small>Voter</small><strong>Access voting</strong></div></a>
+            <a href="#about" class="contact-item"><i class="fa-solid fa-circle-info"></i><div><small>About</small><strong>Learn more</strong></div></a>
+            <a href="#how-it-works" class="contact-item"><i class="fa-solid fa-circle-question"></i><div><small>Help</small><strong>How it works</strong></div></a>
+        </div>
+    </div>
+</section>
+
+</main>
+
+<!-- TRUST BAR -->
+<section class="trust-bar">
+    <div class="trust-title">Designed for organizations</div>
+    <div class="trust-items">
+        <span><i class="fa-solid fa-graduation-cap"></i> Schools</span>
+        <span><i class="fa-solid fa-building-columns"></i> Universities</span>
+        <span><i class="fa-solid fa-people-group"></i> NGOs</span>
+        <span><i class="fa-solid fa-landmark"></i> Government</span>
+        <span><i class="fa-solid fa-briefcase"></i> Companies</span>
+        <span><i class="fa-solid fa-church"></i> Churches</span>
+    </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+    <div class="footer-container">
+        <div class="footer-brand">
+            <div class="brand"><div class="brand-mark"><i class="fa-solid fa-check-to-slot"></i></div>
+                <div class="brand-text"><div class="brand-name">My<span>Voice</span></div><div class="brand-tagline">Secure Elections. Brighter Futures.</div></div>
+            </div>
+            <p>Professional digital voting for secure and transparent elections.</p>
+        </div>
+        <div class="footer-column">
+            <h3>Platform</h3>
+            <a href="#home">Home</a>
+            <a href="#about">About</a>
+            <a href="#how-it-works">How It Works</a>
+            <a href="#benefits">Benefits</a>
+        </div>
+        <div class="footer-column">
+            <h3>Access</h3>
+            <a href="{{ url_for('auth.admin_login') }}">Admin Login</a>
+            <a href="{{ url_for('auth.voter_login') }}">Voter Login</a>
+            <a href="#contact">Support</a>
+        </div>
+        <div class="footer-column">
+            <h3>Contact</h3>
+            <a href="{{ url_for('auth.admin_login') }}">Admin Portal</a>
+            <a href="{{ url_for('auth.voter_login') }}">Voter Portal</a>
+            <a href="#about">About</a>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <span>&copy; 2026 MyVoice. All rights reserved.</span>
+        <span>YOUR VOICE. YOUR CHOICE.</span>
+    </div>
+</footer>
+
+<!-- DYNAMIC HERO IMAGE SCRIPT -->
+<script>
+const heroBackground = document.getElementById("heroBackground");
+const heroImages = [
+    {%- for img in home_hero_images -%}
+        "/uploads/homepage_image/{{ img }}"{% if not loop.last %},{% endif %}
+    {%- endfor -%}
+];
+let currentImage = 0;
+
+function setHeroImage(index) {
+    const img = new Image();
+    img.onload = function() {
+        heroBackground.style.backgroundImage = `url("${heroImages[index]}")`;
+    };
+    img.onerror = function() {
+        // Fallback: if the new path fails, use the legacy static slides
+        heroBackground.style.backgroundImage = "url('/static/images/homepage/slides/image-01.jpg')";
+    };
+    img.src = heroImages[index];
+}
+
+setHeroImage(currentImage);
+
+setInterval(function() {
+    currentImage = (currentImage + 1) % heroImages.length;
+    heroBackground.classList.add("image-changing");
+    setTimeout(function() {
+        setHeroImage(currentImage);
+        heroBackground.classList.remove("image-changing");
+    }, 350);
+}, 8000);
+</script>
+
+<!-- MOBILE NAVIGATION -->
+<script>
+const mobileMenuButton = document.getElementById("mobileMenuButton");
+const mobileNavigation = document.getElementById("mobileNavigation");
+
+mobileMenuButton.addEventListener("click", function() {
+    mobileNavigation.classList.toggle("open");
+    const icon = mobileMenuButton.querySelector("i");
+    icon.className = mobileNavigation.classList.contains("open") ? "fa-solid fa-xmark" : "fa-solid fa-bars";
+});
+
+document.querySelectorAll(".mobile-navigation a").forEach(function(link) {
+    link.addEventListener("click", function() {
+        mobileNavigation.classList.remove("open");
+        mobileMenuButton.querySelector("i").className = "fa-solid fa-bars";
+    });
+});
+</script>
+
+<!-- ACTIVE NAVIGATION -->
+<script>
+const sections = document.querySelectorAll("main section[id]");
+const navLinks = document.querySelectorAll(".main-nav .nav-link");
+
+window.addEventListener("scroll", function() {
+    let current = "";
+    sections.forEach(function(section) {
+        const top = section.offsetTop - 180;
+        if (window.scrollY >= top) { current = section.getAttribute("id"); }
+    });
+    navLinks.forEach(function(link) {
+        link.classList.remove("active");
+        if (link.getAttribute("href") === "#" + current) { link.classList.add("active"); }
+    });
+});
+</script>
+
+</body>
+</html>

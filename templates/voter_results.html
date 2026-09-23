@@ -1,0 +1,948 @@
+{% extends "base.html" %}
+
+{% block title %}{{ election.title }} Results | MyVoice{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --bg-1: #071428;
+        --bg-2: #0d1d35;
+        --panel: rgba(12, 24, 42, 0.9);
+        --panel-strong: rgba(18, 32, 54, 0.98);
+        --panel-soft: rgba(15, 30, 52, 0.8);
+        --border: rgba(133, 162, 205, 0.22);
+        --text: #edf6ff;
+        --muted: #9bb3cf;
+        --blue: #36aef7;
+        --blue-2: #5becff;
+        --cyan: #6ce9ff;
+        --green: #4de8a4;
+        --gold: #f7c75a;
+        --violet: #7b8cff;
+        --red: #ff6a8a;
+        --shadow: 0 22px 70px rgba(5, 11, 24, 0.52);
+    }
+
+    body {
+        background:
+            radial-gradient(circle at top left, rgba(31, 119, 255, 0.14), transparent 30%),
+            radial-gradient(circle at top right, rgba(41, 220, 255, 0.12), transparent 25%),
+            linear-gradient(180deg, #071328 0%, #0a1830 100%);
+        color: var(--text);
+    }
+
+    .results-shell {
+        max-width: 1380px;
+        margin: 32px auto 72px;
+        padding: 0 18px;
+    }
+
+    .results-topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 18px;
+        margin-bottom: 28px;
+        flex-wrap: wrap;
+    }
+
+    .results-eyebrow {
+        display: inline-block;
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--cyan);
+        font-weight: 800;
+        margin-bottom: 12px;
+    }
+
+    .results-topbar h1 {
+        margin: 0;
+        font-size: clamp(34px, 3vw, 54px);
+        letter-spacing: -0.06em;
+        line-height: 1.05;
+        color: var(--text);
+    }
+
+    .results-top-actions {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+    }
+
+    .results-picker {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(13, 26, 44, 0.8);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 8px 12px 8px 14px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+
+    .results-picker label {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+    }
+
+    .results-picker select {
+        background: rgba(13, 24, 41, 0.9);
+        color: var(--text);
+        border: 1px solid rgba(123, 140, 255, 0.2);
+        border-radius: 10px;
+        padding: 10px 38px 10px 12px;
+        font-weight: 700;
+        outline: none;
+        appearance: none;
+        background-image: linear-gradient(45deg, transparent 50%, var(--cyan) 50%), linear-gradient(135deg, var(--cyan) 50%, transparent 50%);
+        background-position: calc(100% - 18px) calc(50% - 2px), calc(100% - 12px) calc(50% - 2px);
+        background-size: 6px 6px, 6px 6px;
+        background-repeat: no-repeat;
+    }
+
+    .results-back {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 46px;
+        padding: 0 18px;
+        background: rgba(127, 159, 247, 0.07);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        color: var(--text);
+        text-decoration: none;
+        font-weight: 700;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(180px, 1fr));
+        gap: 18px;
+        margin-bottom: 22px;
+    }
+
+    .stat-card {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(180deg, rgba(16, 27, 45, 0.95), rgba(10, 20, 34, 0.97));
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 18px 18px 16px;
+        box-shadow: var(--shadow);
+    }
+
+    .stat-card::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto auto 0;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(90deg, var(--blue), var(--cyan), transparent);
+    }
+
+    .stat-label {
+        color: var(--muted);
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        font-weight: 700;
+    }
+
+    .stat-value {
+        display: block;
+        margin-top: 12px;
+        font-size: clamp(24px, 2vw, 34px);
+        font-weight: 900;
+        letter-spacing: -0.05em;
+        color: var(--text);
+    }
+
+    .stat-foot {
+        color: var(--muted);
+        display: block;
+        margin-top: 6px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .results-layout {
+        display: grid;
+        grid-template-columns: 1.5fr 0.9fr 0.9fr;
+        gap: 18px;
+    }
+
+    .panel {
+        background: linear-gradient(180deg, rgba(17, 31, 52, 0.96), rgba(11, 21, 35, 0.98));
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+    }
+
+    .panel-inner {
+        padding: 20px 20px 18px;
+    }
+
+    .leader-panel {
+        grid-column: 1 / 2;
+        grid-row: 1 / span 2;
+    }
+
+    .analytics-panel {
+        grid-column: 2 / 4;
+    }
+
+    .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 18px;
+    }
+
+    .panel-header h3 {
+        margin: 0;
+        font-size: 14px;
+        color: var(--muted);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-weight: 800;
+    }
+
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 26px;
+        padding: 0 10px;
+        background: rgba(77, 232, 164, 0.1);
+        color: var(--green);
+        border: 1px solid rgba(77, 232, 164, 0.25);
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .leader-main {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding: 14px;
+        border: 1px solid rgba(110, 198, 255, 0.2);
+        border-radius: 18px;
+        background: linear-gradient(135deg, rgba(17, 42, 66, 0.7), rgba(17, 28, 44, 0.85));
+    }
+
+    .leader-photo {
+        position: relative;
+        width: 150px;
+        height: 150px;
+        border-radius: 24px;
+        overflow: hidden;
+        flex-shrink: 0;
+        background: linear-gradient(135deg, #0e243a, #172f50);
+        border: 1px solid rgba(125, 184, 255, 0.25);
+        box-shadow: 0 12px 30px rgba(13, 41, 71, 0.5);
+    }
+
+    .leader-photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .leader-photo .fallback {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 54px;
+        font-weight: 900;
+        color: #dbeafe;
+        background: linear-gradient(135deg, #123e6d, #1f5b9e);
+    }
+
+    .medal-badge {
+        position: absolute;
+        right: 10px;
+        bottom: 10px;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #ffd76a, #f7b500);
+        color: #1d1b16;
+        font-size: 16px;
+        font-weight: 900;
+        box-shadow: 0 8px 24px rgba(247, 199, 90, 0.35);
+        border: 2px solid rgba(255,255,255,0.55);
+    }
+
+    .leader-copy {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .leader-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(59, 130, 246, 0.12);
+        border: 1px solid rgba(59, 130, 246, 0.4);
+        color: var(--cyan);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+    }
+
+    .leader-copy h2 {
+        margin: 0;
+        font-size: clamp(22px, 2vw, 30px);
+        letter-spacing: -0.05em;
+        line-height: 1.1;
+        color: var(--text);
+    }
+
+    .leader-percent {
+        display: block;
+        margin-top: 10px;
+        font-size: clamp(32px, 2.4vw, 52px);
+        font-weight: 900;
+        letter-spacing: -0.06em;
+        color: #f8fbff;
+    }
+
+    .leader-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+    }
+
+    .leader-meta span {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted);
+        font-weight: 700;
+        font-size: 12px;
+    }
+
+    .leader-meta strong {
+        color: var(--text);
+        font-size: 13px;
+    }
+
+    .runner-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 18px;
+    }
+
+    .runner-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 12px 10px;
+        border-radius: 16px;
+        background: rgba(16, 30, 50, 0.72);
+        border: 1px solid rgba(122, 153, 198, 0.2);
+        min-height: 94px;
+    }
+
+    .runner-photo {
+        width: 58px;
+        height: 58px;
+        border-radius: 14px;
+        overflow: hidden;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(161, 191, 255, 0.3);
+        flex-shrink: 0;
+    }
+
+    .runner-photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .runner-photo .fallback {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-weight: 800;
+        color: #d7e9ff;
+        background: linear-gradient(135deg, #1c4979, #1d5b9b);
+    }
+
+    .runner-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .runner-copy strong {
+        font-size: 13px;
+        line-height: 1.2;
+        color: var(--text);
+    }
+
+    .runner-copy span {
+        color: var(--cyan);
+        font-size: 18px;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+    }
+
+    .runner-rank {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: rgba(255, 214, 102, 0.12);
+        color: var(--gold);
+        border: 1px solid rgba(247, 201, 90, 0.4);
+        font-size: 12px;
+        font-weight: 900;
+    }
+
+    .analytics-grid {
+        display: grid;
+        grid-template-columns: 1fr 1.2fr;
+        gap: 18px;
+        height: 100%;
+    }
+
+    .mini-panel {
+        background: rgba(13, 25, 42, 0.7);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 18px 18px 14px;
+    }
+
+    .donut-wrap {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 6px;
+    }
+
+    .donut {
+        --donut: 82.6;
+        position: relative;
+        width: 170px;
+        height: 170px;
+        border-radius: 50%;
+        background: conic-gradient(var(--cyan) 0 calc(var(--donut) * 1%), rgba(59, 130, 246, 0.16) 0 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: inset 0 0 20px rgba(42, 167, 255, 0.15), 0 0 28px rgba(54, 174, 247, 0.18);
+    }
+
+    .donut::after {
+        content: "";
+        position: absolute;
+        inset: 22px;
+        border-radius: 50%;
+        background: linear-gradient(180deg, rgba(9, 20, 35, 0.96), rgba(12, 24, 42, 0.97));
+        border: 1px solid rgba(139, 178, 255, 0.18);
+    }
+
+    .donut-inner {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+    }
+
+    .donut-inner strong {
+        display: block;
+        font-size: 28px;
+        letter-spacing: -0.05em;
+        color: var(--text);
+    }
+
+    .donut-inner span {
+        color: var(--muted);
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        font-weight: 700;
+    }
+
+    .legend-list {
+        display: grid;
+        gap: 10px;
+        margin-top: 18px;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .legend-left {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+
+    .dot.blue { background: var(--blue); }
+    .dot.cyan { background: var(--cyan); }
+    .dot.green { background: var(--green); }
+
+    .pulse-panel {
+        padding: 18px 18px 14px;
+    }
+
+    .line-chart {
+        position: relative;
+        height: 160px;
+        margin-top: 12px;
+        border-radius: 12px;
+        background: linear-gradient(180deg, rgba(17, 34, 56, 0.7), rgba(7, 16, 28, 0.85));
+        border: 1px solid rgba(148, 173, 220, 0.14);
+        overflow: hidden;
+    }
+
+    .line-chart svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+    }
+
+    .line-chart .gridline {
+        stroke: rgba(160, 188, 220, 0.12);
+        stroke-width: 1;
+    }
+
+    .line-chart .line {
+        fill: none;
+        stroke: url(#pulseLineGradient);
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .line-chart .area {
+        fill: url(#pulseAreaGradient);
+    }
+
+    .map-panel {
+        padding: 18px 18px 12px;
+    }
+
+    .map-graphic {
+        height: 160px;
+        margin-top: 10px;
+        border-radius: 14px;
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(180deg, rgba(12, 26, 46, 0.9), rgba(7, 17, 31, 0.92));
+        border: 1px solid rgba(130, 157, 220, 0.18);
+    }
+
+    .map-graphic svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+    }
+
+    .map-graphic .shape {
+        fill: rgba(63, 152, 255, 0.18);
+        stroke: rgba(88, 192, 255, 0.42);
+        stroke-width: 1.5;
+    }
+
+    .map-graphic .shape-accent {
+        fill: rgba(78, 221, 255, 0.24);
+        stroke: rgba(108, 233, 255, 0.4);
+    }
+
+    .bottom-panel {
+        margin-top: 18px;
+        grid-column: 1 / -1;
+        padding: 20px 20px 18px;
+    }
+
+    .share-list {
+        display: grid;
+        gap: 14px;
+        margin-top: 20px;
+    }
+
+    .share-item {
+        display: grid;
+        gap: 6px;
+    }
+
+    .share-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        color: var(--text);
+        font-weight: 700;
+        font-size: 13px;
+    }
+
+    .share-bar {
+        width: 100%;
+        height: 12px;
+        border-radius: 999px;
+        background: rgba(152, 177, 211, 0.12);
+        overflow: hidden;
+        border: 1px solid rgba(132, 160, 203, 0.15);
+    }
+
+    .share-bar span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--blue), var(--cyan), var(--green));
+    }
+
+    .empty-state {
+        background: rgba(13, 24, 41, 0.9);
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        padding: 40px 24px;
+        text-align: center;
+        box-shadow: var(--shadow);
+    }
+
+    .empty-state .empty-icon {
+        font-size: 48px;
+        margin-bottom: 12px;
+    }
+
+    .empty-state h3 {
+        margin: 0;
+        font-size: 28px;
+        letter-spacing: -0.05em;
+        color: var(--text);
+    }
+
+    .empty-state p {
+        margin: 10px auto 0;
+        max-width: 540px;
+        color: var(--muted);
+        line-height: 1.7;
+    }
+
+    @media (max-width: 980px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, minmax(170px, 1fr));
+        }
+
+        .results-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .leader-panel,
+        .analytics-panel,
+        .bottom-panel {
+            grid-column: auto;
+            grid-row: auto;
+        }
+    }
+
+    @media (max-width: 560px) {
+        .results-shell {
+            padding: 0 12px;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .leader-main {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .leader-photo {
+            width: 100%;
+            max-width: 250px;
+            height: 220px;
+        }
+
+        .runner-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .analytics-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="results-shell">
+    {% if results_hidden %}
+        <div class="empty-state">
+            <div class="empty-icon">📡</div>
+            <h3>Results have not been broadcast yet.</h3>
+            <p>{{ results_message }}</p>
+        </div>
+    {% else %}
+        <header class="results-topbar">
+            <div>
+                <span class="results-eyebrow">Election Results</span>
+                <h1>{{ election.title }}</h1>
+            </div>
+            <div class="results-top-actions">
+                {% if category_results %}
+                <div class="results-picker">
+                    <label for="categorySelector">Position</label>
+                    <select id="categorySelector" onchange="window.location='{{ url_for('voting.voter_results', election_id=election.id) }}?category_id=' + this.value">
+                        {% for category in category_results %}
+                            <option value="{{ category.category_id }}" {% if selected_category and selected_category.category_id == category.category_id %}selected{% endif %}>{{ category.category_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                <a class="results-back" href="{{ url_for('voting.voter_dashboard') }}">← Back</a>
+            </div>
+        </header>
+
+        {% if participation %}
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-label">Registered Voters</span>
+                <span class="stat-value">{{ participation.registered_students }}</span>
+                <span class="stat-foot">Active voter registrations</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Votes Cast</span>
+                <span class="stat-value">{{ participation.students_voted }}</span>
+                <span class="stat-foot">Total ballots received</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Participation</span>
+                <span class="stat-value">{{ participation.participation_rate }}%</span>
+                <span class="stat-foot">Turnout rate</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Positions</span>
+                <span class="stat-value">{{ selected_category.positions|length if selected_category and selected_category.positions else 0 }}</span>
+                <span class="stat-foot">Live contest count</span>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if selected_category and selected_category.positions %}
+        {% set lead_position = selected_category.positions[0] %}
+        {% set lead_candidates = lead_position.candidates %}
+        {% set leader = lead_candidates[0] if lead_candidates else none %}
+        {% set runners = lead_candidates[1:4] if lead_candidates|length > 1 else [] %}
+        {% set counted_pct = (participation.students_voted / participation.registered_students * 100) if participation and participation.registered_students else 0 %}
+
+        <div class="results-layout">
+            <div class="panel leader-panel">
+                <div class="panel-inner">
+                    <div class="panel-header">
+                        <h3>Currently Leading</h3>
+                        <span class="status-pill">Leading</span>
+                    </div>
+
+                    {% if leader %}
+                    <div class="leader-main">
+                        <div class="leader-photo">
+                            {% if leader.candidate_photo %}
+                                <img src="/uploads/candidates/{{ leader.candidate_photo }}" alt="{{ leader.candidate_name }}">
+                            {% else %}
+                                <div class="fallback">{{ leader.candidate_name[:1] | upper }}</div>
+                            {% endif %}
+                            <div class="medal-badge">1</div>
+                        </div>
+                        <div class="leader-copy">
+                            <span class="leader-tag">{{ lead_position.position_name }}</span>
+                            <h2>{{ leader.candidate_name }}</h2>
+                            <span class="leader-percent">{{ leader.percentage }}%</span>
+                            <div class="leader-meta">
+                                <span>Votes: <strong>{{ leader.votes }}</strong></span>
+                                <span>Rank: <strong>#{{ leader.rank }}</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="runner-grid">
+                        {% for runner in runners %}
+                        <div class="runner-card">
+                            <div class="runner-photo">
+                                {% if runner.candidate_photo %}
+                                    <img src="/uploads/candidates/{{ runner.candidate_photo }}" alt="{{ runner.candidate_name }}">
+                                {% else %}
+                                    <div class="fallback">{{ runner.candidate_name[:1] | upper }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="runner-copy">
+                                <strong>{{ runner.candidate_name }}</strong>
+                                <span>{{ runner.percentage }}%</span>
+                            </div>
+                            <div class="runner-rank">{{ loop.index + 1 }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel analytics-panel">
+                <div class="panel-inner">
+                    <div class="panel-header">
+                        <h3>Vote Analysis</h3>
+                    </div>
+                    <div class="analytics-grid">
+                        <div class="mini-panel">
+                            <div class="panel-header" style="margin-bottom: 10px;">
+                                <h3 style="font-size: 12px;">Counted</h3>
+                            </div>
+                            <div class="donut-wrap">
+                                <div class="donut" style="--donut: {{ counted_pct if counted_pct <= 100 else 100 }};">
+                                    <div class="donut-inner">
+                                        <strong>{{ '%.1f' % counted_pct }}%</strong>
+                                        <span>counted</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="legend-list">
+                                <div class="legend-item">
+                                    <span class="legend-left"><span class="dot blue"></span>Votes counted</span>
+                                    <strong>{{ participation.students_voted }}</strong>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-left"><span class="dot cyan"></span>Participants</span>
+                                    <strong>{{ participation.registered_students }}</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pulse-panel mini-panel">
+                            <div class="panel-header" style="margin-bottom: 10px;">
+                                <h3 style="font-size: 12px;">Vote Pulse</h3>
+                            </div>
+                            <div class="line-chart">
+                                <svg viewBox="0 0 360 160" preserveAspectRatio="none" aria-label="Vote pulse chart">
+                                    <defs>
+                                        <linearGradient id="pulseLineGradient" x1="0" x2="1">
+                                            <stop offset="0%" stop-color="#5ce4ff"/>
+                                            <stop offset="50%" stop-color="#3da9ff"/>
+                                            <stop offset="100%" stop-color="#6fe8c1"/>
+                                        </linearGradient>
+                                        <linearGradient id="pulseAreaGradient" x1="0" x2="0" y1="0" y2="1">
+                                            <stop offset="0%" stop-color="rgba(92, 228, 255, 0.4)"/>
+                                            <stop offset="100%" stop-color="rgba(92, 228, 255, 0.02)"/>
+                                        </linearGradient>
+                                    </defs>
+                                    <g>
+                                        <line class="gridline" x1="0" y1="20" x2="360" y2="20"/>
+                                        <line class="gridline" x1="0" y1="60" x2="360" y2="60"/>
+                                        <line class="gridline" x1="0" y1="100" x2="360" y2="100"/>
+                                        <line class="gridline" x1="0" y1="140" x2="360" y2="140"/>
+                                    </g>
+                                    {% set pulse_values = [] %}
+                                    {% for candidate in (lead_candidates[:5] if lead_candidates|length else []) %}
+                                        {% set _ = pulse_values.append(candidate.percentage) %}
+                                    {% endfor %}
+                                    {% if pulse_values %}
+                                        {% set max_pulse = pulse_values|max %}
+                                        {% set points = [] %}
+                                        {% for item in pulse_values %}
+                                            {% set x = 20 + loop.index0 * 80 %}
+                                            {% set y = 140 - (item / max_pulse * 100 if max_pulse else 0) %}
+                                            {% set _ = points.append(x ~ ':' ~ y) %}
+                                        {% endfor %}
+                                        {% set poly_points = points | join(' ') %}
+                                        <polyline class="area" points="20,140 {% for p in points %}{{ p.split(':')[0] }},{{ p.split(':')[1] }} {% endfor %}340,140" />
+                                        <polyline class="line" points="{{ poly_points }}" />
+                                    {% endif %}
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel map-panel">
+                <div class="panel-inner">
+                    <div class="panel-header">
+                        <h3>Regional Pulse</h3>
+                    </div>
+                    <div class="map-graphic">
+                        <svg viewBox="0 0 340 160" preserveAspectRatio="xMidYMid meet">
+                            <path class="shape" d="M34 60 L82 40 L115 52 L133 28 L170 36 L210 20 L255 36 L289 62 L296 98 L248 116 L193 136 L143 124 L90 133 L42 106 Z"/>
+                            <path class="shape-accent" d="M92 62 L122 48 L148 64 L172 58 L210 44 L240 58 L262 80 L248 104 L198 116 L152 110 L116 122 L84 100 Z"/>
+                            <circle cx="142" cy="82" r="8" fill="#7ae7ff" fill-opacity="0.8"/>
+                            <circle cx="208" cy="80" r="10" fill="#36aef7" fill-opacity="0.9"/>
+                            <circle cx="260" cy="66" r="7" fill="#73f2be" fill-opacity="0.8"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel bottom-panel">
+                <div class="panel-header">
+                    <h3>Candidate Vote Share</h3>
+                </div>
+                <div class="share-list">
+                    {% for candidate in lead_candidates %}
+                    <div class="share-item">
+                        <div class="share-header">
+                            <span>{{ candidate.candidate_name }}</span>
+                            <strong>{{ candidate.percentage }}%</strong>
+                        </div>
+                        <div class="share-bar"><span style="width: {{ candidate.percentage }}%;"></span></div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">📊</div>
+            <h3>No published results available.</h3>
+            <p>There is no data to display for this category yet.</p>
+        </div>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

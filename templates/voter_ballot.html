@@ -1,0 +1,527 @@
+{% extends "base.html" %}
+
+{% block title %}Voter Ballot | {{ election.title }} | MyVoice 2026{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/voter-ballot.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/voter-ballot.js') }}"></script>
+<script>
+window.BallotConfig = {
+    electionTitle: "{{ election.title }}",
+    electionStatus: "{{ election.status }}",
+    electionYear: "{{ election.election_year or '2026' }}",
+    totalPositions: {{ positions|length }},
+    studentName: "{{ student.full_name }}",
+    studentId: "{{ student.student_id }}",
+    studentDepartment: "{{ student.department or '' }}",
+    studentClass: "{{ student.class_name or '' }}",
+    voteStatus: "{{ student.vote_status | default('Not Voted') }}",
+    schoolName: "{{ system_settings.school_name or 'FR Ramon Kabuga TSS' }}",
+    countdown: {% if countdown_time %}"{{ countdown_time }}"{% else %}null{% endif %},
+    alreadyVoted: {{ already_voted|tojson }}
+};
+
+window.duplicateVoteAlerted = false;
+
+function announceToScreenReader(message, urgent = false) {
+    const liveRegion = document.getElementById('live-region');
+    if (liveRegion) {
+        liveRegion.textContent = message;
+        if (urgent) {
+            liveRegion.style.color = '#EF4444';
+            liveRegion.style.fontWeight = '700';
+            setTimeout(() => {
+                liveRegion.style.color = '';
+                liveRegion.style.fontWeight = '';
+            }, 2000);
+        }
+    }
+    
+    if ('speechSynthesis' in window) {
+        if (urgent) {
+            speechSynthesis.cancel();
+        }
+        const utterance = new SpeechSynthesisUtterance(message);
+        utterance.volume = 1.0;
+        utterance.rate = 1.1;
+        utterance.pitch = 1.0;
+        speechSynthesis.speak(utterance);
+    }
+}
+
+function playAlarmSound() {
+    const alarmAudio = document.getElementById('alarm-sound');
+    if (alarmAudio) {
+        alarmAudio.volume = 1.0;
+        alarmAudio.currentTime = 0;
+        alarmAudio.loop = true;
+        alarmAudio.play().catch(() => {
+            playWebAudioAlarm();
+        });
+    } else {
+        playWebAudioAlarm();
+    }
+}
+
+function playWebAudioAlarm() {
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        if (!audioContext) return;
+        
+        let isPlaying = true;
+        let currentFreq = 880;
+        
+        function playAlarmCycle() {
+            if (!isPlaying) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = currentFreq;
+            gainNode.gain.value = 0.5;
+            
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.25);
+            
+            currentFreq = currentFreq === 880 ? 440 : 880;
+            
+            setTimeout(playAlarmCycle, 300);
+        }
+        
+        playAlarmCycle();
+        
+        setTimeout(() => {
+            isPlaying = false;
+            audioContext.close();
+        }, 5000);
+    } catch (e) {
+        console.warn('Alarm sound could not be played:', e);
+    }
+}
+
+function showDuplicateVoteWarning(message) {
+    if (window.duplicateVoteAlerted) return;
+    window.duplicateVoteAlerted = true;
+    
+    announceToScreenReader(message, true);
+    playAlarmSound();
+    
+    const banner = document.getElementById('duplicate-vote-banner');
+    if (!banner) return;
+
+    banner.classList.add('active');
+
+    const marquee = document.getElementById('announcement-marquee');
+    if (marquee) {
+        marquee.innerHTML = '<span class="announcement-item" style="color: var(--color-white); font-weight: 700;">🚨 SECURITY ALERT: Duplicate vote attempt detected and blocked. Each voter may vote only once.</span>';
+        marquee.style.animation = 'marquee 10s linear infinite';
+    }
+
+    const submitBtn = document.getElementById('submit-vote-btn');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('blocked');
+    }
+
+    const closeBtn = document.getElementById('banner-close');
+    if (closeBtn) {
+        closeBtn.onclick = function() {
+            banner.classList.remove('active');
+            if (marquee) {
+                marquee.innerHTML = '';
+                initializeAnnouncements();
+            }
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('blocked');
+            }
+        };
+    }
+}
+
+function initializeAnnouncements() {
+    const marquee = document.getElementById('announcement-marquee');
+    if (!marquee) return;
+    
+    const messages = [
+        "📢 Election voting is now open! Cast your vote by the deadline.",
+        "🔒 Your vote is secure and confidential. Thank you for participating in democracy!",
+        "⏰ Remember: Each student can only vote once per category."
+    ];
+    
+    if (messages.length > 0) {
+        marquee.innerHTML = messages.map(msg => `<span class="announcement-item">${msg}</span>`).join(' ');
+    }
+}
+
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="voter-ballot-shell">
+    
+    <!-- Admin Announcement Bar -->
+    <div class="announcement-bar" id="announcement-bar">
+        <div class="announcement-marquee" id="announcement-marquee"></div>
+    </div>
+
+    <!-- Duplicate Vote Warning Banner (Alarm + Red Announcement) -->
+    <div class="duplicate-vote-banner" id="duplicate-vote-banner">
+        <div class="banner-content">
+            <div class="banner-icon">
+                <span>🚨</span>
+            </div>
+            <div class="banner-text">
+                <h2 class="banner-title">SECURITY ALERT — DUPLICATE VOTE BLOCKED</h2>
+                <p class="banner-message">You have already cast your vote in this election. Each eligible voter is permitted to vote only once. This attempt has been recorded and reported to the election administrators.</p>
+            </div>
+            <div class="banner-close" id="banner-close">✕</div>
+        </div>
+    </div>
+
+    <!-- Hidden Alarm Sound Element -->
+    <audio id="alarm-sound" preload="auto">
+        <source src="{{ url_for('static', filename='sounds/alarm.mp3') }}" type="audio/mpeg">
+        <source src="{{ url_for('static', filename='sounds/alarm.wav') }}" type="audio/wav">
+    </audio>
+
+    <!-- Page Header with Glass Effect -->
+
+    <header class="ballot-header">
+        <div class="header-left">
+            <div class="school-logo">
+                {% if system_settings and system_settings.school_logo %}
+                <img src="{{ url_for('static', filename='uploads/' + system_settings.school_logo) }}" alt="School Logo" />
+                {% else %}
+                <div class="logo-fallback">FR K</div>
+                {% endif %}
+            </div>
+            <div class="header-brand">
+                <h1 class="brand-title">🗳️ MYVOICE</h1>
+                <p class="brand-subtitle">Official Student Election 2026 | Secure Digital Voting Portal</p>
+            </div>
+        </div>
+        
+        <div class="header-right">
+            <div class="theme-toggle">
+                <button class="theme-btn" data-theme="light" title="Light Mode">☀️</button>
+                <button class="theme-btn" data-theme="blue" title="Blue Mode">🔵</button>
+                <button class="theme-btn" data-theme="dark" title="Dark Mode">🌙</button>
+            </div>
+            <div class="election-status">
+                <span class="status-badge online">ONLINE</span>
+            </div>
+            <div class="header-actions">
+                <a class="action-btn" href="{{ url_for('voting.voter_dashboard') }}" title="Back to Dashboard">←</a>
+                <a class="action-btn" href="{{ url_for('voting.voter_logout') }}" title="Logout">🚪</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section with Student Info -->
+    <section class="hero-section">
+        <div class="hero-content">
+            <div class="student-info-card">
+                <div class="student-name" id="student-name">{{ student.full_name }}</div>
+                <div class="student-meta">
+                    <span class="meta-item">{{ student.student_id }}</span>
+                    <span class="meta-item">{{ student.department or 'Student' }}</span>
+                    <span class="meta-item">{{ student.class_name or '' }}</span>
+                </div>
+            </div>
+            
+            <div class="hero-details">
+                <div class="live-date" id="live-date"></div>
+                <div class="live-time" id="live-time"></div>
+                <div class="countdown-section" id="countdown-section">
+                    <div class="countdown-label">Election Ends In</div>
+                    <div class="countdown-timer" id="countdown-timer">
+                        <span class="countdown-value" id="countdown-hours">00</span>
+                        <span class="countdown-label-small">h</span>
+                        <span class="countdown-value" id="countdown-mins">00</span>
+                        <span class="countdown-label-small">m</span>
+                        <span class="countdown-value" id="countdown-secs">00</span>
+                        <span class="countdown-label-small">s</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Ballot Progress Section -->
+    <div class="progress-section" id="progress-section">
+        <div class="progress-header">
+            <h2 class="progress-title">Your Ballot</h2>
+            <div class="progress-stats">
+                <span class="progress-count" id="progress-count">0 / {{ positions|length }}</span>
+                <span class="progress-percent" id="progress-percent">0%</span>
+            </div>
+        </div>
+        
+        <div class="progress-track-container">
+            <div class="progress-track" id="progress-track">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <div class="step-indicators" id="step-indicators">
+                {% for position in positions %}
+                <span class="step-indicator" data-position="{{ position.id }}">
+                    <span class="step-value">⚪</span>
+                </span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Voting Form -->
+    <form method="POST" action="{{ url_for('voting.submit_vote') }}" id="votingForm" novalidate>
+        <input type="hidden" name="election_id" value="{{ election.id }}">
+        
+        {% for position in positions %}
+        <div class="position-card" data-position-id="{{ position.id }}" id="position-{{ position.id }}">
+            <div class="position-header">
+                <span class="position-number">{{ loop.index }}</span>
+                <h3 class="position-name">{{ position.name }}</h3>
+                <span class="step-indicator" data-position="{{ position.id }}">
+                    <span class="step-value">⚪</span>
+                </span>
+                {% if position.description %}
+                <p class="position-description">{{ position.description[:80] }}{% if position.description|length > 80 %}...{% endif %}</p>
+                {% endif %}
+            </div>
+            
+            <div class="candidates-container">
+                {% set position_candidates = candidates|selectattr('position_id', 'equalto', position.id)|list %}
+                {% if position_candidates %}
+                <div class="candidates-list" id="candidates-{{ position.id }}">
+                    {% for candidate in position_candidates %}
+                    <label class="candidate-option" tabindex="0">
+                        <input type="radio" name="candidate_id_{{ position.id }}" value="{{ candidate.id }}" required>
+                        <div class="candidate-card-inner" role="radiogroup" aria-label="{{ position.name }} - {{ candidate.name or candidate.full_name }}">
+                            <div class="candidate-photo-wrap">
+                                {% if candidate.photo %}
+                                <img src="/uploads/candidates/{{ candidate.photo }}" 
+                                     alt="Photo of {{ candidate.full_name or candidate.name }}" 
+                                     class="candidate-photo" />
+                                {% else %}
+                                <div class="candidate-photo-fallback">
+                                    {{ (candidate.full_name or candidate.name)[0] if candidate.full_name or candidate.name else 'C' }}
+                                </div>
+                                {% endif %}
+                                <div class="candidate-checkmark">✓</div>
+                            </div>
+                            <div class="candidate-photo-name">{{ candidate.full_name or candidate.name }}</div>
+                                <span class="badge position-badge">{{ position.name }}</span>
+                                {% if position.is_head_position or position.is_headboy %}
+                                <span class="badge headboy-badge">HEADBOY</span>
+                                {% endif %}
+                                
+                            <div class="candidate-content">
+                                <h4 class="candidate-name">{{ candidate.full_name or candidate.name }}</h4>
+                                
+                                {% if candidate.student and candidate.student.student_id %}
+                                <div class="candidate-student-id">
+                                    <span class="student-id-label">Student No:</span>
+                                    <span class="student-id-value">{{ candidate.student.student_id }}</span>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="candidate-subdetails">
+                                    {% if candidate.student and candidate.student.class_name %}
+                                    <span class="sub-detail">{{ candidate.student.class_name }}</span>
+                                    {% endif %}
+                                    {% if candidate.student and candidate.student.department %}
+                                    <span class="sub-detail-separator">•</span>
+                                    <span class="sub-detail">{{ candidate.student.department }}</span>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="candidate-manifesto-quote">
+                                    {% if candidate.manifesto or candidate.biography %}
+                                    <blockquote>
+                                        <p class="manifesto-quote-text">"</p>
+                                        <p class="manifesto-quote-content">{{ (candidate.manifesto or candidate.biography)[:100] }}{% if (candidate.manifesto or candidate.biography)|length > 100 %}...{% endif %}</p>
+                                        <p class="manifesto-quote-text">"</p>
+                                    </blockquote>
+                                    {% else %}
+                                    <p class="no-manifesto">No campaign statement available</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <button type="button" class="vote-btn select-btn" data-position="{{ position.id }}" data-candidate="{{ candidate.id }}">
+                                <span class="vote-icon">🗳️</span>
+                                <span class="vote-text">Select</span>
+                            </button>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-candidates">
+                    <div class="empty-icon">👤</div>
+                    <p>No candidates registered for this position</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="voting-actions">
+            <button type="submit" class="btn-submit-vote" id="submit-vote-btn">
+                <span class="submit-icon">🗳️</span>
+                <span class="submit-text">Submit My Vote</span>
+                <span class="loading-spinner" id="loading-spinner"></span>
+            </button>
+            <a href="{{ url_for('voting.voter_dashboard') }}" class="btn-cancel">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<!-- Success Modal -->
+<div class="modal-overlay" id="success-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-content">
+        <div class="modal-icon" id="modal-icon">🎉</div>
+        <h2 id="modal-title" class="modal-title">Vote Recorded Successfully</h2>
+        <p id="modal-message" class="modal-message">Your vote has been securely encrypted and stored. Preparing next position...</p>
+        <div class="modal-celebration" id="modal-celebration"></div>
+        <div class="modal-countdown" id="modal-countdown">
+            <div class="countdown-circle">
+                <span class="countdown-number" id="countdown-num">5</span>
+            </div>
+            <p class="countdown-text">Closing in 5 seconds...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Final Confirmation Modal -->
+<div class="modal-overlay" id="final-modal" role="dialog" aria-modal="true" aria-labelledby="final-modal-title">
+    <div class="modal-content final-modal">
+        <div class="modal-icon final-icon">🎊</div>
+        <h2 id="final-modal-title" class="modal-title">🎉 Congratulations!</h2>
+        <p class="modal-message final-message">Your vote has been securely submitted. Thank you for strengthening democracy.</p>
+        <div class="encrypted-icon" id="encrypted-icon">
+            <svg viewBox="0 0 50 50" class="lock-svg">
+                <path d="M25 2 L48 2 L48 48 L25 48 L2 48 L2 2 Z" fill="none" stroke="#10B981" stroke-width="2"></path>
+                <path d="M25 12 L38 12 L38 38 L25 38 Z" fill="#10B981"></path>
+                <path d="M25 22 L25 32" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"></path>
+            </svg>
+        </div>
+        <div class="petals-container" id="petals-container"></div>
+    </div>
+</div>
+
+<!-- Manifesto Modal -->
+<div class="modal-overlay" id="manifesto-modal" role="dialog" aria-modal="true" aria-labelledby="manifesto-title">
+    <div class="modal-content manifesto-modal">
+        <div class="modal-header">
+            <h2 id="manifesto-title" class="modal-title">Campaign Statement</h2>
+            <button type="button" class="modal-close" onclick="closeManifestoModal()">&times;</button>
+        </div>
+        <div class="manifesto-body" id="manifesto-body"></div>
+    </div>
+</div>
+
+<!-- Sidebar Status -->
+<div class="sidebar-status" id="sidebar-status">
+    <!-- Quick Candidate Selector -->
+    <div class="status-section quick-candidates">
+        <h3>Quick Select</h3>
+        <div class="candidate-quick-list">
+            {% for position in positions %}
+            {% set position_candidates = candidates|selectattr('position_id', 'equalto', position.id)|list %}
+            {% if position_candidates %}
+            <div class="quick-position-group">
+                <div class="quick-position-name" title="{{ position.name }}">{{ position.name[:20] }}{% if position.name|length > 20 %}...{% endif %}</div>
+                <div class="quick-candidates-list">
+                    {% for candidate in position_candidates %}
+                    <div class="quick-candidate-item" data-position="{{ position.id }}" data-candidate="{{ candidate.id }}">
+                        <span class="quick-candidate-name" title="{{ candidate.full_name or candidate.name }}">{{ (candidate.full_name or candidate.name)[:15] }}{% if (candidate.full_name or candidate.name)|length > 15 %}...{% endif %}</span>
+                        {% if candidate.slogan %}
+                        <span class="quick-slogan" title="{{ candidate.slogan }}">{{ candidate.slogan[:10] }}</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    
+    <div class="status-section">
+        <h3>Voter Information</h3>
+        <div class="status-item">
+            <span class="status-label">Name:</span>
+            <span class="status-value">{{ student.full_name }}</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">ID:</span>
+            <span class="status-value">{{ student.student_id }}</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Department:</span>
+            <span class="status-value">{{ student.department or 'Student' }}</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Status:</span>
+            <span class="status-value vote-status">{{ student.vote_status }}</span>
+        </div>
+    </div>
+    
+    <div class="status-section">
+        <h3>Election Information</h3>
+        <div class="status-item">
+            <span class="status-label">Title:</span>
+            <span class="status-value">{{ election.title }}</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Year:</span>
+            <span class="status-value">{{ election.election_year or '2026' }}</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Status:</span>
+            <span class="status-value election-status {{ election.status|lower }}">{{ election.status }}</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Positions:</span>
+            <span class="status-value">{{ positions|length }}</span>
+        </div>
+    </div>
+    
+    <div class="status-section">
+        <h3>System Status</h3>
+        <div class="status-item">
+            <span class="status-label">Internet:</span>
+            <span class="status-value connection-status" id="connection-status">🟢 Connected</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Session:</span>
+            <span class="status-value session-time" id="session-timer">30:00</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Auto Save:</span>
+            <span class="status-value">✓ Enabled</span>
+        </div>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer class="ballot-footer">
+    <p class="footer-content">
+        <span>Powered by <strong>MyVoice Voting System</strong></span>
+        <span>|</span>
+        <span>FR Ramon Kabuga Technical Secondary School</span>
+        <span>|</span>
+        <span>Secure Electronic Voting</span>
+        <span>|</span>
+        <span>Version 2026 Enterprise Edition</span>
+    </p>
+    <p class="footer-date">© {{ election.election_year or '2026' }} All rights reserved</p>
+</footer>
+{% endblock %}
