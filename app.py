@@ -1060,6 +1060,15 @@ def health():
 # PUBLIC SEO FILES
 # =====================================
 
+@app.route("/google65a4682dad9a0e59.html")
+def google_site_verification():
+
+    return Response(
+        "google-site-verification: google65a4682dad9a0e59.html",
+        mimetype="text/plain"
+    )
+
+
 @app.route("/robots.txt")
 def robots_txt():
 
