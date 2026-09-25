@@ -1057,6 +1057,47 @@ def health():
 
 
 # =====================================
+# PUBLIC SEO FILES
+# =====================================
+
+@app.route("/robots.txt")
+def robots_txt():
+
+    return Response(
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /admin\n"
+        "Disallow: /admin/\n"
+        "Disallow: /voter\n"
+        "Disallow: /voter/\n"
+        "Disallow: /vote\n"
+        "Disallow: /voting\n"
+        "Disallow: /results\n"
+        "Disallow: /api\n"
+        "Disallow: /settings\n"
+        "Disallow: /audit_logs\n"
+        "Disallow: /archive\n"
+        "Disallow: /notifications\n"
+        "Sitemap: https://myvoice-voting-by-ithardweak.vercel.app/sitemap.xml\n",
+        mimetype="text/plain"
+    )
+
+
+@app.route("/sitemap.xml")
+def sitemap_xml():
+
+    return Response(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n"
+        "  <url>\n"
+        "    <loc>https://myvoice-voting-by-ithardweak.vercel.app/</loc>\n"
+        "  </url>\n"
+        "</urlset>\n",
+        mimetype="application/xml"
+    )
+
+
+# =====================================
 # ADMIN DISCOVERY ENDPOINT — DISABLED
 # =====================================
 # The previous /admin/show-admins endpoint rendered a public list of every
