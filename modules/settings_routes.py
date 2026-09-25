@@ -165,9 +165,14 @@ ALLOWED_EXTENSIONS = {
 
 
 
-if not os.path.exists(UPLOAD_FOLDER):
+if not (
+    os.environ.get("VERCEL")
+    or os.environ.get("AWS_LAMBDA_FUNCTION_VERSION")
+):
 
-    os.makedirs(UPLOAD_FOLDER)
+    if not os.path.exists(UPLOAD_FOLDER):
+
+        os.makedirs(UPLOAD_FOLDER)
 
 
 
